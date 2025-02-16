@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
@@ -19,6 +20,86 @@ type ApiHandler struct {
 	imageStorage ImageStorageService
 	ocr          OcrSerivce
 	validate     *validator.Validate
+}
+
+func (a *ApiHandler) iterateDocuments(ctx context.Context, accountId uuid.UUID, callback func(*entity.ElasticMatchedContent) error) error {
+	items, err := a.metaStorage.Search(ctx, accountId, "", nil, addr(1000))
+	for err == nil && len(items) > 0 {
+		for _, item := range items {
+			err = callback(item)
+		}
+		if len(items) > 0 {
+			items, err = a.metaStorage.Search(ctx, accountId, "", &items[len(items)-1].Metadata.Created, addr(1000))
+		}
+	}
+
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// CheckDuplicates implements server.StrictServerInterface.
+func (a *ApiHandler) CheckDuplicates(ctx context.Context, request server.CheckDuplicatesRequestObject) (server.CheckDuplicatesResponseObject, error) {
+	return server.CheckDuplicates200Response{},
+		a.iterateDocuments(ctx, request.AccountId, func(emc *entity.ElasticMatchedContent) error {
+
+			id := emc.Metadata.ImageId
+			embedding := emc.Metadata.EmbeddingV1
+
+			embeddingFoundImage, err := a.metaStorage.GetByEmbeddingV1(ctx, embedding, &id)
+			if err != nil {
+				log.Printf("Failed to search image embedding duplicates : id=%s, err=%v", id, err)
+				return nil
+			}
+
+			if embeddingFoundImage == nil {
+				return nil
+			}
+
+			err = a.metaStorage.Delete(ctx, id)
+			if err != nil {
+				log.Printf("Failed to delete image duplicates : id=%s, err=%v", id, err)
+				return nil
+			}
+			return nil
+		})
+
+}
+
+// UpdateOcr implements server.StrictServerInterface.
+func (a *ApiHandler) UpdateOcr(ctx context.Context, request server.UpdateOcrRequestObject) (server.UpdateOcrResponseObject, error) {
+	return server.UpdateOcr200Response{},
+		a.iterateDocuments(ctx, request.AccountId, func(emc *entity.ElasticMatchedContent) error {
+
+			id := emc.Metadata.ImageId
+			accountId := emc.Metadata.AccountId
+			hash := emc.Metadata.Hash
+			s3id := emc.Metadata.S3Id
+			created := emc.Metadata.Created
+
+			log.Printf("UpdateOcr: checking image id=%s", id)
+
+			img, err := a.imageStorage.GetImage(ctx, s3id)
+			if err != nil {
+				log.Printf("Failed to read image from storage : id=%s, err=%v", id, err)
+				return nil
+			}
+
+			ocrResult, err := a.ocr.DoOcr(ctx, id, img)
+			if err != nil {
+				log.Printf("Failed to doOcr for image id=%s, err=%v", id, err)
+				return nil
+			}
+
+			elasticObject := OcrResultToElastic(id, accountId, hash, created, ocrResult)
+			err = a.metaStorage.Save(ctx, elasticObject)
+			if err != nil {
+				log.Printf("Failed to save new metadata for image id=%s, err=%v", id, err)
+				return nil
+			}
+			return nil
+		})
 }
 
 // GetMemeImageThumbUrl implements server.StrictServerInterface.
@@ -63,8 +144,54 @@ func (a *ApiHandler) GetMemeImageUrl(ctx context.Context, request server.GetMeme
 	return resp, nil
 }
 
+func (a *ApiHandler) findHashDuplicates(
+	ctx context.Context,
+	hash string,
+) (*entity.ElasticImageMetaData, error) {
+	return a.metaStorage.GetByHash(ctx, hash)
+}
+
+func (a *ApiHandler) findContentDuplicates(
+	ctx context.Context,
+	ocrResult *OcrProcessedResult,
+) (*entity.ElasticImageMetaData, error) {
+	embedding := &entity.ElasticEmbeddingV1{
+		Data:  &ocrResult.Embedding.Data,
+		Model: ocrResult.Embedding.Model,
+	}
+	return a.metaStorage.GetByEmbeddingV1(ctx, embedding, nil)
+}
+
+func (a *ApiHandler) HandleDuplicate(
+	ctx context.Context,
+	status server.DuplicateStatus,
+	duplicate *entity.ElasticImageMetaData,
+	request server.CreateMemeRequestObject,
+) (server.CreateMemeResponseObject, error) {
+	response := server.CreateMeme200JSONResponse{}
+	if duplicate.AccountId != request.AccountId {
+		copyMetadata := *duplicate
+		log.Printf("Found meme duplicate in another account: id=%s", duplicate.ImageId)
+		copyMetadata.ImageId, _ = uuid.NewRandom()
+		copyMetadata.AccountId = request.AccountId
+		err := a.metaStorage.Save(ctx, &copyMetadata)
+		if err != nil {
+			return nil, err
+		}
+		helper.ElasticToCreateResponse(&copyMetadata, status, &response)
+	} else {
+		log.Printf("Found meme duplicate in this account: id=%s", duplicate.ImageId)
+		helper.ElasticToCreateResponse(duplicate, status, &response)
+	}
+
+	return response, nil
+}
+
 // CreateMeme implements server.StrictServerInterface.
-func (a *ApiHandler) CreateMeme(ctx context.Context, request server.CreateMemeRequestObject) (server.CreateMemeResponseObject, error) {
+func (a *ApiHandler) CreateMeme(
+	ctx context.Context,
+	request server.CreateMemeRequestObject,
+) (server.CreateMemeResponseObject, error) {
 	image := request.Body
 
 	idUuid, _ := uuid.NewRandom()
@@ -72,45 +199,29 @@ func (a *ApiHandler) CreateMeme(ctx context.Context, request server.CreateMemeRe
 		return nil, errors.New("image is empty")
 	}
 
-	hash := helper.CalcHash(image.ImageBase64)
-
-	hashDuplicate, err := a.metaStorage.GetByHash(ctx, hash)
+	hash := helper.CalcHash(request.Body.ImageBase64)
+	hashDuplicate, err := a.findHashDuplicates(ctx, hash)
 	if err != nil {
-		//TODO handle fail
 		return nil, err
 	}
 
 	if hashDuplicate != nil {
-		hashAccountDuplicate, err := a.metaStorage.GetByHashAndAccountId(ctx, request.AccountId, hash)
-		if err != nil {
-			//TODO handle fail
-			return nil, err
-		}
-
-		response := server.CreateMeme200JSONResponse{}
-
-		if hashAccountDuplicate == nil {
-			copyMetadata := *hashDuplicate
-			log.Printf("Found meme duplicate in another account: id=%s hash=%s", hashDuplicate.ImageId, hash)
-			copyMetadata.ImageId = idUuid
-			copyMetadata.AccountId = request.AccountId
-			err = a.metaStorage.Save(ctx, &copyMetadata)
-			if err != nil {
-				return nil, err
-			}
-			helper.ElasticToCreateResponse(&copyMetadata, &response)
-		} else {
-			log.Printf("Found meme duplicate in this account: id=%s hash=%s", hashAccountDuplicate.ImageId, hash)
-			helper.ElasticToCreateResponse(hashAccountDuplicate, &response)
-		}
-
-		return response, nil
+		return a.HandleDuplicate(ctx, server.DuplicateHash, hashDuplicate, request)
 	}
 
 	reqImage := helper.ImageToEntity2(request.Body)
 	ocrResult, err := a.ocr.DoOcr(ctx, idUuid, reqImage)
 	if err != nil {
 		return nil, err
+	}
+
+	contentDuplicate, err := a.findContentDuplicates(ctx, ocrResult)
+	if err != nil {
+		return nil, err
+	}
+
+	if contentDuplicate != nil {
+		return a.HandleDuplicate(ctx, server.DuplicateImage, contentDuplicate, request)
 	}
 
 	if strings.TrimSpace(ocrResult.OcrText) == "" {
@@ -122,31 +233,28 @@ func (a *ApiHandler) CreateMeme(ctx context.Context, request server.CreateMemeRe
 		return nil, err
 	}
 
-	elasticMetaData := entity.ElasticImageMetaData{
-		ImageId:   idUuid,
-		S3Id:      idUuid,
-		AccountId: request.AccountId,
-		ThumbSize: &entity.ElasticSizes{
-			Height: ocrResult.Thumbnail.Height,
-			Width:  ocrResult.Thumbnail.Width,
-		},
-		Hash:   hash,
-		Result: ocrResult.OcrText,
-	}
+	elasticMetaData := OcrResultToElastic(
+		idUuid,
+		request.AccountId,
+		hash,
+		time.Now().UnixMicro(),
+		ocrResult,
+	)
+
 	err = a.validate.Struct(elasticMetaData)
 	if err != nil {
 		//TODO handle fail
 		return nil, err
 	}
 
-	err = a.metaStorage.Save(ctx, &elasticMetaData)
+	err = a.metaStorage.Save(ctx, elasticMetaData)
 	if err != nil {
 		//TODO handle fail
 		return nil, err
 	}
 
 	response := server.CreateMeme200JSONResponse{}
-	helper.ElasticToCreateResponse(&elasticMetaData, &response)
+	helper.ElasticToCreateResponse(elasticMetaData, server.New, &response)
 	return response, nil
 }
 
@@ -191,6 +299,25 @@ func (a *ApiHandler) SearchMeme(ctx context.Context, request server.SearchMemeRe
 	}
 
 	return response, nil
+}
+
+func OcrResultToElastic(idUuid uuid.UUID, accountId uuid.UUID, hash string, created int64, ocrResult *OcrProcessedResult) *entity.ElasticImageMetaData {
+	return &entity.ElasticImageMetaData{
+		ImageId:   idUuid,
+		S3Id:      idUuid,
+		AccountId: accountId,
+		ThumbSize: &entity.ElasticSizes{
+			Height: ocrResult.Thumbnail.Height,
+			Width:  ocrResult.Thumbnail.Width,
+		},
+		Created: created,
+		Hash:    hash,
+		Result:  ocrResult.OcrText,
+		EmbeddingV1: &entity.ElasticEmbeddingV1{
+			Data:  &ocrResult.Embedding.Data,
+			Model: ocrResult.Embedding.Model,
+		},
+	}
 }
 
 func NewApiHandler(
