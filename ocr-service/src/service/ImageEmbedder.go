@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"log"
 
 	aiplatform "cloud.google.com/go/aiplatform/apiv1beta1"
 	aiplatformpb "cloud.google.com/go/aiplatform/apiv1beta1/aiplatformpb"
@@ -33,6 +34,7 @@ type EmbeddedImage struct {
 
 // GetIconMatrix implements ImageCompareKeyExtractor.
 func (i *ImageEmbeddingExtractorImpl) GetImageEmbeddingV1(ctx context.Context, argImage *entity.Image) (*EmbeddedImage, error) {
+	log.Printf("GetImageEmbeddingV1() ")
 	bufBase64Reader := bytes.NewBufferString("")
 	bufBytesWriter := base64.NewEncoder(base64.RawStdEncoding, bufBase64Reader)
 	defer bufBytesWriter.Close()
@@ -48,6 +50,7 @@ func (i *ImageEmbeddingExtractorImpl) generateWithLowerDimension(
 	ctx context.Context,
 	dataImageBase64 string,
 ) (*EmbeddedImage, error) {
+	log.Printf("generateWithLowerDimension() ")
 	// location = "us-central1"
 
 	// This is the input to the model's prediction call. For schema, see:
@@ -81,6 +84,7 @@ func (i *ImageEmbeddingExtractorImpl) generateWithLowerDimension(
 		Parameters: params,
 	}
 
+	log.Printf("Predict() ")
 	resp, err := i.client.Predict(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate embeddings: %w", err)
