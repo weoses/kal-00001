@@ -90,16 +90,21 @@ func (i *ImageEmbeddingExtractorImpl) generateWithLowerDimension(
 		return nil, fmt.Errorf("failed to generate embeddings: %w", err)
 	}
 
+	log.Printf("protojson.Marshal()")
 	instanceEmbeddingsJson, err := protojson.Marshal(resp.GetPredictions()[0])
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert protobuf value to JSON: %w", err)
 	}
+
+	log.Printf("instanceEmbeddings ")
 	// For response schema, see:
 	// https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/multimodal-embeddings-api#response-body
 	var instanceEmbeddings struct {
 		ImageEmbeddings []float32 `json:"imageEmbedding"`
 		TextEmbeddings  []float32 `json:"textEmbedding"`
 	}
+
+	log.Printf("json.Unmarshal()")
 	if err := json.Unmarshal(instanceEmbeddingsJson, &instanceEmbeddings); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal JSON: %w", err)
 	}
@@ -107,6 +112,7 @@ func (i *ImageEmbeddingExtractorImpl) generateWithLowerDimension(
 	imageEmbedding := instanceEmbeddings.ImageEmbeddings
 	//textEmbedding := instanceEmbeddings.TextEmbeddings
 
+	log.Printf("return")
 	return &EmbeddedImage{
 		Data:  imageEmbedding,
 		Model: i.model,
