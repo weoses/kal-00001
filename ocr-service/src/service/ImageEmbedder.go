@@ -35,19 +35,20 @@ type EmbeddedImage struct {
 func (i *ImageEmbeddingExtractorImpl) GetImageEmbeddingV1(ctx context.Context, argImage *entity.Image) (*EmbeddedImage, error) {
 	bufBase64Reader := bytes.NewBufferString("")
 	bufBytesWriter := base64.NewEncoder(base64.RawStdEncoding, bufBase64Reader)
+	defer bufBytesWriter.Close()
+
 	bufBytesWriter.Write(*argImage.Data)
-	bufBytesWriter.Close()
 	base64Str := bufBase64Reader.String()
 
-	return i.generateWithLowerDimension(&base64Str)
+	return i.generateWithLowerDimension(ctx, base64Str)
 }
 
 // generateWithLowerDimension shows how to generate lower-dimensional embeddings for text and image inputs.
 func (i *ImageEmbeddingExtractorImpl) generateWithLowerDimension(
-	dataImageBase64 *string,
+	ctx context.Context,
+	dataImageBase64 string,
 ) (*EmbeddedImage, error) {
 	// location = "us-central1"
-	ctx := context.Background()
 
 	// This is the input to the model's prediction call. For schema, see:
 	// https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/multimodal-embeddings-api#request_body
@@ -56,7 +57,7 @@ func (i *ImageEmbeddingExtractorImpl) generateWithLowerDimension(
 			// Image input can be provided either as a Google Cloud Storage URI or as
 			// base64-encoded bytes using the "bytesBase64Encoded" field.
 			//"gcsUri": "gs://cloud-samples-data/vertex-ai/llm/prompts/landmark1.png",
-			"bytesBase64Encoded": *dataImageBase64,
+			"bytesBase64Encoded": dataImageBase64,
 		},
 	})
 
