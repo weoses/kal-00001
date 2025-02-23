@@ -65,14 +65,6 @@ func (i *ImageServiceImpl) ProcessImage(ctx context.Context, image server.PostAp
 	return response, nil
 }
 
-func pixels(uintArr []uint16) []int {
-	intArr := make([]int, len(uintArr))
-	for i, v := range uintArr {
-		intArr[i] = int(v)
-	}
-	return intArr
-}
-
 func imageDtoToEntity(dto *server.ImageDto) *entity.Image {
 	decoder := base64.NewDecoder(base64.RawStdEncoding, strings.NewReader(*dto.ImageBase64))
 	data, _ := io.ReadAll(decoder)

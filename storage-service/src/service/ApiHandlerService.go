@@ -23,13 +23,13 @@ type ApiHandler struct {
 }
 
 func (a *ApiHandler) iterateDocuments(ctx context.Context, accountId uuid.UUID, callback func(context.Context, *entity.ElasticMatchedContent) error) error {
-	items, err := a.metaStorage.Search(ctx, accountId, "", nil, addr(1000))
+	items, err := a.metaStorage.Search(ctx, accountId, "", nil, addr(100))
 	for err == nil && len(items) > 0 {
 		for _, item := range items {
 			err = callback(ctx, item)
 		}
 		if len(items) > 0 {
-			items, err = a.metaStorage.Search(ctx, accountId, "", &items[len(items)-1].Metadata.Created, addr(1000))
+			items, err = a.metaStorage.Search(ctx, accountId, "", &items[len(items)-1].Metadata.Created, addr(100))
 		}
 	}
 
