@@ -3,9 +3,11 @@ package ffmpeg
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
+	"github.com/weoses/memelo/common/helper"
 	commonservice "github.com/weoses/memelo/common/service"
 	"github.com/weoses/memelo/common/temp"
 	v1 "github.com/weoses/memelo/gen/proto/v1"
@@ -15,6 +17,56 @@ import (
 
 func newClient(cfg *conf.FfmpegServiceConfig) v1connect.FfmpegServiceClient {
 	return v1connect.NewFfmpegServiceClient(http.DefaultClient, cfg.Uri)
+}
+
+// ffmpegJobAdapter holds the client/polling config shared by adapters that
+// submit a single ffmpeg job and wrap its single S3 output as temp.Data.
+type ffmpegJobAdapter struct {
+	cl             v1connect.FfmpegServiceClient
+	tmpDataService commonservice.TmpDataService
+	pollInterval   time.Duration
+	pollMaxWait    time.Duration
+	log            *slog.Logger
+	errPrefix      string
+}
+
+func newFfmpegJobAdapter(cfg *conf.FfmpegServiceConfig, tmpDataService commonservice.TmpDataService, errPrefix string) ffmpegJobAdapter {
+	return ffmpegJobAdapter{
+		cl:             newClient(cfg),
+		tmpDataService: tmpDataService,
+		pollInterval:   time.Duration(cfg.PollIntervalMs) * time.Millisecond,
+		pollMaxWait:    time.Duration(cfg.PollMaxWaitSec) * time.Second,
+		log:            slog.With("service", errPrefix),
+		errPrefix:      errPrefix,
+	}
+}
+
+// run submits a single ffmpeg job built by buildRequest, waits for it to
+// finish, and wraps its single S3 output as temp.Data.
+func (a *ffmpegJobAdapter) run(ctx context.Context, video temp.Data, buildRequest func(inputS3Path string) *v1.SubmitFfmpegJobRequest) (temp.Data, error) {
+	input, err := resolveInput(ctx, a.tmpDataService, video)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", a.errPrefix, err)
+	}
+	if input.Owned {
+		defer helper.QuietClose(input.Created, a.log)
+	}
+
+	submitResp, err := a.cl.SubmitJob(ctx, buildRequest(input.S3Path))
+	if err != nil {
+		return nil, fmt.Errorf("%s: submit job: %w", a.errPrefix, err)
+	}
+
+	status, err := pollJob(ctx, a.cl, submitResp.JobId, a.pollInterval, a.pollMaxWait)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", a.errPrefix, err)
+	}
+
+	result, err := a.tmpDataService.WrapInternalS3Path(ctx, status.GetOutputS3Path())
+	if err != nil {
+		return nil, fmt.Errorf("%s: wrap result: %w", a.errPrefix, err)
+	}
+	return result, nil
 }
 
 // pollJob polls GetJobStatus until the job reaches a terminal state, ctx is
@@ -79,7 +131,7 @@ func resolveInput(ctx context.Context, tmpDataService commonservice.TmpDataServi
 	if err != nil {
 		return resolvedInput{}, fmt.Errorf("resolveInput: get reader: %w", err)
 	}
-	defer reader.Close()
+	defer helper.QuietClose(reader, slog.With("func", "resolveInput"))
 
 	uploaded, err := tmpDataService.ByReaderUpload(ctx, "video/mp4", reader)
 	if err != nil {
