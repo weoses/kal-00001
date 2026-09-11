@@ -21,7 +21,6 @@ const (
 	testMediaBucket     = "test-media"
 	testTempBucket      = "test-temp"
 	testEsMetadataIndex = "metadata-db-test"
-	testEsTagIndex      = "tag-db-test"
 )
 
 var (
@@ -120,10 +119,6 @@ func buildTestConfig(esAddr, minioEndpoint, minioUser, minioPass string) *conf.C
 			Index:                  testEsMetadataIndex,
 			EmbeddingMatchTreshold: 0.9,
 		},
-		TagDb: &conf.TagDbConfig{
-			Elastic: &elasticsearch8.Config{Addresses: []string{esAddr}},
-			Index:   testEsTagIndex,
-		},
 		MediaStorage:    storageConfig(testMediaBucket),
 		TempStorage:     storageConfig(testTempBucket),
 		ImageConverter:  &conf.ImageConverterConfig{ThumbSize: 360, OriginalMaxSize: 4096},
@@ -137,7 +132,7 @@ func resetState(t *testing.T) {
 	t.Helper()
 	ctx := context.Background()
 
-	if err := clearElastic(ctx, testEsClient, testEsMetadataIndex, testEsTagIndex); err != nil {
+	if err := clearElastic(ctx, testEsClient, testEsMetadataIndex); err != nil {
 		t.Logf("clearElastic: %v", err)
 	}
 	for _, bucket := range []string{testMediaBucket, testTempBucket} {

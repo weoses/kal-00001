@@ -21,7 +21,6 @@ type MemeResult struct {
 	OnScreenText    string   `json:"on_screen_text"`
 	AudioTranscript string   `json:"audio_transcript"`
 	AudioTrack      string   `json:"audio_track"`
-	Tags            []string `json:"tags"`
 	ThumbnailURL    string   `json:"thumbnail_url"`
 	ThumbnailW      int32    `json:"thumbnail_w"`
 	ThumbnailH      int32    `json:"thumbnail_h"`
@@ -239,7 +238,6 @@ func dtoToResult(dto *v1.MemeDto) MemeResult {
 		OnScreenText:    dto.GetOnScreenText(),
 		AudioTranscript: dto.GetAudioTranscript(),
 		AudioTrack:      dto.GetAudioTrack(),
-		Tags:            dto.GetTags(),
 	}
 	if thumb := dto.GetImageThumbnail(); thumb != nil {
 		r.ThumbnailURL = thumb.GetUrl()

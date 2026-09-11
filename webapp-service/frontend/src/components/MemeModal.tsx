@@ -346,15 +346,6 @@ export default function MemeModal({ index, onClose, onPrev, onNext, onRecompute,
               onSave={handleFieldSave}
             />
           ))}
-          {meme.tags && meme.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {meme.tags.map(t => (
-                <span key={t} className="text-xs bg-gray-700 rounded px-2 py-0.5 text-gray-300">
-                  {t}
-                </span>
-              ))}
-            </div>
-          )}
         </div>
       </Dialog>
       </div>

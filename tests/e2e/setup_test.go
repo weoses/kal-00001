@@ -25,7 +25,6 @@ type Config struct {
 }
 
 var (
-	tagsClient   v1connect.TagsServiceClient
 	searchClient v1connect.SearchServiceClient
 	config       Config
 )
@@ -35,10 +34,6 @@ func cleanup() {
 	_, err := searchClient.DeleteAll(ctx, &v1.DeleteAllRequest{AccountId: testAccountId})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "cleanup: DeleteAll memes failed: %v\n", err)
-	}
-	_, err = tagsClient.DeleteAll(ctx, &v1.DeleteAllRequest{AccountId: testAccountId})
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "cleanup: DeleteAll tags failed: %v\n", err)
 	}
 }
 
@@ -70,10 +65,6 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	tagsClient = v1connect.NewTagsServiceClient(
-		http.DefaultClient,
-		config.Uri,
-		connect.WithInterceptors(NewAuthInterceptor(config.Username, config.Password)))
 	searchClient = v1connect.NewSearchServiceClient(
 		http.DefaultClient,
 		config.Uri,

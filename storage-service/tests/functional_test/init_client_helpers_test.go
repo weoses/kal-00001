@@ -25,7 +25,6 @@ func h2cClient() *http.Client {
 
 type TestClient struct {
 	search    v1connect.SearchServiceClient
-	tags      v1connect.TagsServiceClient
 	recompute v1connect.RecomputeServiceClient
 }
 
@@ -33,7 +32,6 @@ func NewTestClient(addr string) *TestClient {
 	c := h2cClient()
 	return &TestClient{
 		search:    v1connect.NewSearchServiceClient(c, addr),
-		tags:      v1connect.NewTagsServiceClient(c, addr),
 		recompute: v1connect.NewRecomputeServiceClient(c, addr),
 	}
 }
@@ -104,5 +102,4 @@ func (c *TestClient) GetRandomMeme(ctx context.Context, accountID string, mediaT
 	return c.search.GetRandomMeme(ctx, req)
 }
 
-func (c *TestClient) Tags() v1connect.TagsServiceClient           { return c.tags }
 func (c *TestClient) Recompute() v1connect.RecomputeServiceClient { return c.recompute }

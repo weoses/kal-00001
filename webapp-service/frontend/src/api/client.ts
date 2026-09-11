@@ -9,7 +9,6 @@ export interface Meme {
   on_screen_text: string
   audio_transcript: string
   audio_track: string
-  tags: string[]
   thumbnail_url: string
   thumbnail_w: number
   thumbnail_h: number

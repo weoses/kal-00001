@@ -75,7 +75,6 @@ type MetadataPipelineContext struct {
 	ResultPerVideoSlices []entity.ResultPerVideoSlice
 	StorageArtifacts     []MetadataStorageArtifact
 	Duplicate            *entity.ElasticImageMetaData
-	Tags                 []entity.ElasticTag
 
 	ImageOriginalJpeg temp.S3BackedData
 	VideoMp4          temp.S3BackedData

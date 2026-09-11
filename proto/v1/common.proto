@@ -25,7 +25,6 @@ message MemeDto {
   string ocr_result = 2;
   ImageDto image_thumbnail = 3;
   ImageDto media_original = 4;
-  repeated string tags = 5;
   string type = 6;
   string caption = 7;
   string audio_transcript = 8;
