@@ -39,15 +39,6 @@ metadata-db:
     ApiKey:
   Index:
 
-tag-db:
-  Elastic:
-    Addresses:
-    Username:
-    Password:
-    CloudID:
-    ApiKey:
-  Index:
-
 image-converter:
   ThumbSize: 360
 

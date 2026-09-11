@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/weoses/memelo/common/helper"
 	"github.com/weoses/memelo/storage-service/entity"
 	storage2 "github.com/weoses/memelo/storage-service/storage"
 )
@@ -70,13 +69,6 @@ func (p *PipelineSaveServiceImpl) Save(ctx context.Context, target *entity.Elast
 				target.EmbeddingList = append(target.EmbeddingList, v)
 			}
 		}
-	}
-
-	if len(pipelineResult.Tags) > 0 {
-		target.Tags = helper.TransformSlice(
-			pipelineResult.Tags,
-			make([]string, len(pipelineResult.Tags)),
-			func(tag entity.ElasticTag) string { return tag.Tag })
 	}
 
 	if err := p.metadataStorageService.Save(ctx, target); err != nil {

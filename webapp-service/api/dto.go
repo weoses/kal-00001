@@ -10,7 +10,6 @@ type MemeResponse struct {
 	OnScreenText    string   `json:"on_screen_text"`
 	AudioTranscript string   `json:"audio_transcript"`
 	AudioTrack      string   `json:"audio_track"`
-	Tags            []string `json:"tags"`
 	ThumbnailURL    string   `json:"thumbnail_url"`
 	ThumbnailW      int32    `json:"thumbnail_w"`
 	ThumbnailH      int32    `json:"thumbnail_h"`
@@ -46,7 +45,6 @@ func memeToResponse(m service.MemeResult) MemeResponse {
 		OnScreenText:    m.OnScreenText,
 		AudioTranscript: m.AudioTranscript,
 		AudioTrack:      m.AudioTrack,
-		Tags:            m.Tags,
 		ThumbnailURL:    m.ThumbnailURL,
 		ThumbnailW:      m.ThumbnailW,
 		ThumbnailH:      m.ThumbnailH,

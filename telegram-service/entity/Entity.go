@@ -26,7 +26,6 @@ type MemeCreateResult struct {
 	Text            string
 	Caption         string
 	DuplicateStatus string
-	Tags            []string
 }
 
 type YouTubeJobStatus struct {

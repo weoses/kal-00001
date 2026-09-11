@@ -70,12 +70,10 @@ func (m MessageHandlerServiceImpl) ProcessImageMessage(ctx context.Context, mess
 		return &MessageHandlerResponse{
 			Message: fmt.Sprintf(
 				" Text: ```\n%s\n```\n"+
-					" Tags: ```%s```\n"+
 					" Caption: `%s`\n"+
 					" ID: `%s` \n"+
 					" Status: `%s`",
 				result.Text,
-				strings.Join(result.Tags, ", "),
 				result.Caption,
 				result.Id,
 				result.DuplicateStatus),
@@ -105,12 +103,10 @@ func (m MessageHandlerServiceImpl) ProcessVideoMessage(ctx context.Context, mess
 		return &MessageHandlerResponse{
 			Message: fmt.Sprintf(
 				" Text: ```\n%s\n```\n"+
-					" Tags: ```%s```\n"+
 					" Caption: `%s`\n"+
 					" ID: `%s` \n"+
 					" Status: `%s`",
 				result.Text,
-				strings.Join(result.Tags, ", "),
 				result.Caption,
 				result.Id,
 				result.DuplicateStatus),
@@ -154,12 +150,10 @@ func (m MessageHandlerServiceImpl) ProcessDocumentMessage(ctx context.Context, m
 		return &MessageHandlerResponse{
 			Message: fmt.Sprintf(
 				" Text: ```\n%s\n```\n"+
-					" Tags: ```%s```\n"+
 					" Caption: `%s`\n"+
 					" ID: `%s` \n"+
 					" Status: `%s`",
 				result.Text,
-				strings.Join(result.Tags, ", "),
 				result.Caption,
 				result.Id,
 				result.DuplicateStatus),
@@ -220,12 +214,10 @@ func (m MessageHandlerServiceImpl) ProcessYouTubeMessage(ctx context.Context, me
 		return &MessageHandlerResponse{
 			Message: fmt.Sprintf(
 				" Text: ```\n%s\n```\n"+
-					" Tags: ```%s```\n"+
 					" Caption: `%s`\n"+
 					" ID: `%s` \n"+
 					" Status: `%s`",
 				result.Text,
-				strings.Join(result.Tags, ", "),
 				result.Caption,
 				result.Id,
 				result.DuplicateStatus),

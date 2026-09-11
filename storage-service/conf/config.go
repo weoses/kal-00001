@@ -26,11 +26,6 @@ type MetadataDbConfig struct {
 	EmbeddingMatchTreshold float64
 }
 
-type TagDbConfig struct {
-	Elastic *elasticsearch8.Config
-	Index   string
-}
-
 type ImageConverterConfig struct {
 	OriginalMaxSize int
 	ThumbSize       int
@@ -116,7 +111,6 @@ type Config struct {
 	MediaStorage        *commonconfig.MediaStorageConfig `mapstructure:"media-storage"`
 	TempStorage         *commonconfig.MediaStorageConfig `mapstructure:"temp-storage"`
 	MetadataDb          *MetadataDbConfig                `mapstructure:"metadata-db"`
-	TagDb               *TagDbConfig                     `mapstructure:"tag-db"`
 	ImageConverter      *ImageConverterConfig            `mapstructure:"image-converter"`
 	FfmpegService       *FfmpegServiceConfig             `mapstructure:"ffmpeg-service"`
 	GeminiExtractor     *GeminiExtractorConfig           `mapstructure:"gemini-extractor"`

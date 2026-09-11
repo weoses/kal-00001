@@ -20,8 +20,6 @@ type ElasticImageMetaData struct {
 
 	EmbeddingList []EmbeddingItem
 
-	Tags []string
-
 	Type MetadataType `validator:"required"`
 
 	ResultData *Result

@@ -2,12 +2,10 @@ package service
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 
-	"connectrpc.com/connect"
 	"github.com/google/uuid"
 	"github.com/weoses/memelo/common/helper"
 	"github.com/weoses/memelo/common/temp"
@@ -29,8 +27,6 @@ type StorageConnector interface {
 
 	DeleteMeme(ctx context.Context, accountId uuid.UUID, memeId uuid.UUID) error
 
-	AddTag(ctx context.Context, accountId uuid.UUID, name string, description string) error
-
 	GetRandomMeme(ctx context.Context, accountId uuid.UUID, mediaType string) (*entity.MemeSearchResult, error)
 
 	StartRecomputeById(ctx context.Context, accountId uuid.UUID, memeId uuid.UUID) error
@@ -38,25 +34,8 @@ type StorageConnector interface {
 
 type StorageConnectorImpl struct {
 	cl          v1connect.SearchServiceClient
-	tagsCl      v1connect.TagsServiceClient
 	recomputeCl v1connect.RecomputeServiceClient
 	log         *slog.Logger
-}
-
-func (s *StorageConnectorImpl) AddTag(ctx context.Context, accountId uuid.UUID, name string, description string) error {
-	_, err := s.tagsCl.CreateTag(ctx, &v1.CreateTagRequest{
-		AccountId:   accountId.String(),
-		Tag:         name,
-		Description: description,
-	})
-	if err != nil {
-		var connectErr *connect.Error
-		if errors.As(err, &connectErr) && connectErr.Code() == connect.CodeAlreadyExists {
-			return fmt.Errorf("tag '%s' already exists", name)
-		}
-		return fmt.Errorf("AddTag failed: name=%s %w", name, err)
-	}
-	return nil
 }
 
 func (s *StorageConnectorImpl) DeleteMeme(ctx context.Context, accountId uuid.UUID, memeId uuid.UUID) error {
@@ -155,7 +134,6 @@ func (s *StorageConnectorImpl) CreateMeme(ctx context.Context, data temp.S3Backe
 		Id:              memeId,
 		Text:            response.Result.GetOcrResult(),
 		DuplicateStatus: response.Status.String(),
-		Tags:            response.Result.GetTags(),
 		Caption:         response.Result.GetCaption(),
 	}, nil
 }
@@ -212,11 +190,9 @@ func (s *StorageConnectorImpl) StartRecomputeById(ctx context.Context, accountId
 
 func NewStorageConnector(config *conf.Config) (StorageConnector, error) {
 	cl := v1connect.NewSearchServiceClient(http.DefaultClient, config.StorageService.Uri)
-	tagsCl := v1connect.NewTagsServiceClient(http.DefaultClient, config.StorageService.Uri)
 	recomputeCl := v1connect.NewRecomputeServiceClient(http.DefaultClient, config.StorageService.Uri)
 	return &StorageConnectorImpl{
 		cl:          cl,
-		tagsCl:      tagsCl,
 		recomputeCl: recomputeCl,
 		log:         slog.With("service", "StorageConnectorService"),
 	}, nil

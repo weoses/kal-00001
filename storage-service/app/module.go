@@ -67,17 +67,6 @@ func Module() fx.Option {
 		fx.Provide(ffmpegclient.NewVideo2FrameExtractorAdapter),
 		fx.Provide(ffmpegclient.NewVideoSlicerAdapter),
 
-		fx.Provide(storage2.NewElasticTagStorage),
-		fx.Provide(
-			fx.Annotate(
-				func(s storage2.ElasticTagStorage) storage2.ElasticMigrating { return s.(storage2.ElasticMigrating) },
-				fx.ResultTags(`group:"migrators"`),
-			),
-		),
-		fx.Provide(service.NewTagMetadataExtractService),
-		fx.Provide(service.NewTagService),
-		fx.Provide(api.NewTagsGrpcApi),
-
 		fx.Provide(storage2.NewMetadataStorageService),
 		fx.Provide(
 			fx.Annotate(
@@ -109,7 +98,6 @@ func Module() fx.Option {
 		fx.Provide(fx.Annotate(service.NewCheckDuplicateByEmbeddingVidPipelineStep, fx.ResultTags(`group:"pipeline_steps"`))),
 		fx.Provide(fx.Annotate(service.NewImgLlmExtractPipelineStep, fx.ResultTags(`group:"pipeline_steps"`))),
 		fx.Provide(fx.Annotate(service.NewCreateThumbnailPipelineStep, fx.ResultTags(`group:"pipeline_steps"`))),
-		fx.Provide(fx.Annotate(service.NewCalcTagsPipelineStep, fx.ResultTags(`group:"pipeline_steps"`))),
 		fx.Provide(fx.Annotate(service.NewVidSlicePipelineStep, fx.ResultTags(`group:"pipeline_steps"`))),
 		fx.Provide(fx.Annotate(service.NewVidCalcEmbeddingsPipelineStep, fx.ResultTags(`group:"pipeline_steps"`))),
 		fx.Provide(fx.Annotate(service.NewVidLlmExtractPipelineStep, fx.ResultTags(`group:"pipeline_steps"`))),
@@ -139,7 +127,6 @@ func startup(
 	ln net.Listener,
 	searchApi v1connect.SearchServiceHandler,
 	exportApi v1connect.ExportServiceHandler,
-	tagsApi v1connect.TagsServiceHandler,
 	recomputeApi v1connect.RecomputeServiceHandler,
 ) {
 	interceptors := connect.WithInterceptors(middleware.NewLoggingInterceptor(slog.With("service", "router")))
@@ -147,7 +134,6 @@ func startup(
 	mux := http.NewServeMux()
 	mux.Handle(v1connect.NewSearchServiceHandler(searchApi, interceptors))
 	mux.Handle(v1connect.NewExportServiceHandler(exportApi, interceptors))
-	mux.Handle(v1connect.NewTagsServiceHandler(tagsApi, interceptors))
 	mux.Handle(v1connect.NewRecomputeServiceHandler(recomputeApi, interceptors))
 	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
