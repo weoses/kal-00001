@@ -28,7 +28,7 @@ var (
 func TestMain(m *testing.M) {
 	ctx := context.Background()
 
-	minioContainer, err := tcMinio.Run(ctx, "minio/minio:latest")
+	minioContainer, err := tcMinio.Run(ctx, "cgr.dev/chainguard/minio:latest")
 	if err != nil {
 		log.Fatalf("start minio: %v", err)
 	}
