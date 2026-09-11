@@ -1,87 +1,37 @@
 services:
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.16.2
-    restart: unless-stopped
-    environment:
-      discovery.type: single-node
-      xpack.security.enabled: "false"
-      ES_JAVA_OPTS: ${ELASTIC_JAVA_OPTS:--Xms512m -Xmx512m}
-    ports:
-      - "127.0.0.1:9200:9200"
-    volumes:
-      - "elasticsearch_data:/usr/share/elasticsearch/data"
-    networks:
-      - env
-    healthcheck:
-      test: [ "CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health || exit 1" ]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 30s
-
-  minio:
-    # minio/minio is no longer published on Docker Hub — this is a
-    # drop-in community-maintained build.
-    image: cgr.dev/chainguard/minio:latest
-    command: [ "server", "/data" ]
-    restart: unless-stopped
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minio123}
-      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minio123}
-      MC_HOST_local: http://${MINIO_ACCESS_KEY:-minio123}:${MINIO_SECRET_KEY:-minio123}@localhost:9000
-    ports:
-      - "127.0.0.1:9000:9000"
-    volumes:
-      - "minio_data:/data"
-    networks:
-      - env
-    healthcheck:
-      test: [ "CMD", "mc", "ready", "local" ]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 10s
-
-  postgres:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-memelo}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-memelo}
-      POSTGRES_DB: ${POSTGRES_DB:-telegram}
-    ports:
-      - "127.0.0.1:5432:5432"
-    networks:
-      - env
-    volumes:
-      - "postgres_data:/var/lib/postgresql/data"
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-memelo} -d ${POSTGRES_DB:-telegram}" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   storage-service:
     build:
       dockerfile: Dockerfile-storage-service
     image: ghcr.io/weoses/storage-service:${RELEASE_VERSION:-latest}
     environment:
-      METADATA_DB_ELASTIC_ADDRESSES: ${ELASTIC_ADDRESSES:-http://elasticsearch:9200}
-      METADATA_DB_ELASTIC_USERNAME: ${ELASTIC_USERNAME:-}
-      METADATA_DB_ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:-}
-      METADATA_DB_INDEX: ${METADATA_ELASTIC_INDEX:-memelo-metadata}
+#      METADATA_DB_ELASTIC_ADDRESSES: http://elasticsearch:9200
+#      METADATA_DB_ELASTIC_USERNAME: ${ELASTIC_USERNAME:-elastic}
+#      METADATA_DB_ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:-elastic}
 
-      MEDIA_STORAGE_ENDPOINT: ${MINIO_ENDPOINT:-minio:9000}
+#      TAG_DB_ELASTIC_ADDRESSES: http://elasticsearch:9200
+#      TAG_DB_ELASTIC_USERNAME: ${ELASTIC_USERNAME:-elastic}
+#      TAG_DB_ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:-elastic}
+
+      METADATA_DB_ELASTIC_CLOUDID: ${ELASTIC_CLOUDID}
+      METADATA_DB_ELASTIC_APIKEY: ${ELASTIC_APIKEY}
+      METADATA_DB_INDEX:  ${METADATA_ELASTIC_INDEX}
+
+      TAG_DB_ELASTIC_CLOUDID: ${ELASTIC_CLOUDID}
+      TAG_DB_ELASTIC_APIKEY:  ${ELASTIC_APIKEY}
+      TAG_DB_INDEX: ${TAG_ELASTIC_INDEX}
+
+
+      MEDIA_STORAGE_ENDPOINT: ${MINIO_ENDPOINT:-service:9000}
       MEDIA_STORAGE_ACCESSKEY: ${MINIO_ACCESS_KEY:-minio123}
       MEDIA_STORAGE_SECRETKEY: ${MINIO_SECRET_KEY:-minio123}
       MEDIA_STORAGE_SECURE: ${MINIO_SECURE:-false}
-      MEDIA_STORAGE_BUCKET: ${MEDIA_STORAGE_BUCKET:-memelo-media}
+      MEDIA_STORAGE_BUCKET: ${MEDIA_STORAGE_BUCKET}
 
-      TEMP_STORAGE_ENDPOINT: ${MINIO_ENDPOINT:-minio:9000}
+      TEMP_STORAGE_ENDPOINT: ${MINIO_ENDPOINT:-service:9000}
       TEMP_STORAGE_ACCESSKEY: ${MINIO_ACCESS_KEY:-minio123}
       TEMP_STORAGE_SECRETKEY: ${MINIO_SECRET_KEY:-minio123}
       TEMP_STORAGE_SECURE: ${MINIO_SECURE:-false}
-      TEMP_STORAGE_BUCKET: ${TEMP_STORAGE_BUCKET:-memelo-temp}
+      TEMP_STORAGE_BUCKET: ${TEMP_STORAGE_BUCKET}
 
       MEDIA_EMBEDDING_PROJECTNAME: ${EMBEDDING_PROJECTNAME}
       AUDIO_STT_PROJECTNAME: ${EMBEDDING_PROJECTNAME}
@@ -105,12 +55,26 @@ services:
       retries: 6
       start_period: 20s
     depends_on:
-      elasticsearch:
-        condition: service_healthy
-      minio:
-        condition: service_healthy
       ffmpeg-service:
         condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-memelo}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-memelo}
+      POSTGRES_DB: ${POSTGRES_DB:-telegram}
+    ports:
+      - "127.0.0.1:5432:5432"
+    networks:
+      - env
+    volumes:
+      - "postgres_data:/var/lib/postgresql/temp"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-memelo} -d ${POSTGRES_DB:-telegram}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   telegram-service:
     build:
@@ -122,11 +86,11 @@ services:
       STORAGE_SERVICE_URI: http://storage-service:7001
       YOUTUBE_SERVICE_URI: http://youtube-service:7004
       POSTGRES_DSN: postgres://${POSTGRES_USER:-memelo}:${POSTGRES_PASSWORD:-memelo}@postgres:5432/${POSTGRES_DB:-telegram}?sslmode=disable
-      TEMP_STORAGE_ENDPOINT: ${MINIO_ENDPOINT:-minio:9000}
+      TEMP_STORAGE_ENDPOINT: ${MINIO_ENDPOINT:-service:9000}
       TEMP_STORAGE_ACCESSKEY: ${MINIO_ACCESS_KEY:-minio123}
       TEMP_STORAGE_SECRETKEY: ${MINIO_SECRET_KEY:-minio123}
       TEMP_STORAGE_SECURE: ${MINIO_SECURE:-false}
-      TEMP_STORAGE_BUCKET: ${TEMP_STORAGE_BUCKET:-memelo-temp}
+      TEMP_STORAGE_BUCKET: ${TEMP_STORAGE_BUCKET}
     restart: unless-stopped
     ports:
       - "127.0.0.1:7002:7002"
@@ -136,8 +100,6 @@ services:
       - env
     depends_on:
       postgres:
-        condition: service_healthy
-      minio:
         condition: service_healthy
       storage-service:
         condition: service_healthy
@@ -149,32 +111,22 @@ services:
       dockerfile: Dockerfile-youtube-service
     image: ghcr.io/weoses/youtube-service:${RELEASE_VERSION:-latest}
     environment:
-      SERVER_LISTENADDRESS: ":7004"
       STORAGE_SERVICE_URI: http://storage-service:7001
-      TEMP_STORAGE_ENDPOINT: ${MINIO_ENDPOINT:-minio:9000}
+      TEMP_STORAGE_ENDPOINT: ${MINIO_ENDPOINT:-service:9000}
       TEMP_STORAGE_ACCESSKEY: ${MINIO_ACCESS_KEY:-minio123}
       TEMP_STORAGE_SECRETKEY: ${MINIO_SECRET_KEY:-minio123}
       TEMP_STORAGE_SECURE: ${MINIO_SECURE:-false}
-      TEMP_STORAGE_BUCKET: ${TEMP_STORAGE_BUCKET:-memelo-temp}
+      TEMP_STORAGE_BUCKET: ${TEMP_STORAGE_BUCKET}
       YOUTUBE_MAXVIDEOSIZEBYTES: ${YOUTUBE_MAX_VIDEO_SIZE_BYTES:-524288000}
       YOUTUBE_MAXCONCURRENTDOWNLOADS: ${YOUTUBE_MAX_CONCURRENT_DOWNLOADS:-4}
-      YOUTUBE_APIKEY: ${YOUTUBE_PROVIDER_APIKEY:-}
     restart: unless-stopped
     ports:
-      - "127.0.0.1:7004:7004"
+      - "127.0.0.1:7003:7003"
     volumes:
       - "./youtube-service/config.yaml:/app/config/config.yaml"
     networks:
       - env
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:7004/health" ]
-      interval: 30s
-      timeout: 10s
-      retries: 6
-      start_period: 20s
     depends_on:
-      minio:
-        condition: service_healthy
       storage-service:
         condition: service_healthy
 
@@ -183,15 +135,14 @@ services:
       dockerfile: Dockerfile-ffmpeg-service
     image: ghcr.io/weoses/ffmpeg-service:${RELEASE_VERSION:-latest}
     environment:
-      SERVER_LISTENADDRESS: ":7005"
-      TEMP_STORAGE_ENDPOINT: ${MINIO_ENDPOINT:-minio:9000}
+      TEMP_STORAGE_ENDPOINT: ${MINIO_ENDPOINT:-service:9000}
       TEMP_STORAGE_ACCESSKEY: ${MINIO_ACCESS_KEY:-minio123}
       TEMP_STORAGE_SECRETKEY: ${MINIO_SECRET_KEY:-minio123}
       TEMP_STORAGE_SECURE: ${MINIO_SECURE:-false}
-      TEMP_STORAGE_BUCKET: ${TEMP_STORAGE_BUCKET:-memelo-temp}
-      FFMPEG_BINARY: ${FFMPEG_BINARY:-ffmpeg}
-      FFMPEG_CPULIMIT: ${FFMPEG_CPULIMIT:-0}
-      FFMPEG_THREADSLIMIT: ${FFMPEG_THREADSLIMIT:-0}
+      TEMP_STORAGE_BUCKET: ${TEMP_STORAGE_BUCKET}
+      FFMPEG_BINARY: ${FFMPEG_BINARY}
+      FFMPEG_CPULIMIT: ${FFMPEG_CPULIMIT}
+      FFMPEG_THREADSLIMIT: ${FFMPEG_THREADSLIMIT}
     restart: unless-stopped
     ports:
       - "127.0.0.1:7005:7005"
@@ -205,48 +156,10 @@ services:
       timeout: 10s
       retries: 6
       start_period: 20s
-    depends_on:
-      minio:
-        condition: service_healthy
-
-  webapp-service:
-    build:
-      dockerfile: Dockerfile-webapp-service
-    image: ghcr.io/weoses/webapp-service:${RELEASE_VERSION:-latest}
-    environment:
-      SERVER_LISTENADDRESS: ":7003"
-      STORAGE_SERVICE_URI: http://storage-service:7001
-      ACCOUNT_ID: ${WEBAPP_ACCOUNT_ID:-00000000-0000-0000-0000-000000000000}
-      TEMP_STORAGE_ENDPOINT: ${MINIO_ENDPOINT:-minio:9000}
-      TEMP_STORAGE_ACCESSKEY: ${MINIO_ACCESS_KEY:-minio123}
-      TEMP_STORAGE_SECRETKEY: ${MINIO_SECRET_KEY:-minio123}
-      TEMP_STORAGE_SECURE: ${MINIO_SECURE:-false}
-      TEMP_STORAGE_BUCKET: ${TEMP_STORAGE_BUCKET:-memelo-temp}
-      JWT_SECRET: ${WEBAPP_JWT_SECRET:-change-me-in-production}
-      FRONTEND_BASEURL: ${WEBAPP_FRONTEND_BASEURL:-}
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:7003:7003"
-    volumes:
-      - "./webapp-service/config.yaml:/app/config/config.yaml"
-    networks:
-      - env
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:7003/api/health" ]
-      interval: 30s
-      timeout: 10s
-      retries: 6
-      start_period: 20s
-    depends_on:
-      minio:
-        condition: service_healthy
-      storage-service:
-        condition: service_healthy
 
 networks:
   env:
 
 volumes:
-  elasticsearch_data:
   minio_data:
   postgres_data:
