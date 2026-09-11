@@ -83,10 +83,10 @@ services:
       TEMP_STORAGE_SECURE: ${MINIO_SECURE:-false}
       TEMP_STORAGE_BUCKET: ${TEMP_STORAGE_BUCKET:-memelo-temp}
 
-      # OpenRouter needs only an API key (no GCP project/credentials setup),
-      # so it's the default for local startup. Set EXTRACTOR_PROVIDER /
-      # EMBEDDER_PROVIDER to "gemini" (and fill in GOOGLE_CREDS_PATH /
-      # EMBEDDING_PROJECTNAME below) to use Gemini instead.
+      # OpenRouter needs only an API key, so it's the default for local
+      # startup. Set EXTRACTOR_PROVIDER/EMBEDDER_PROVIDER to "gemini" and
+      # fill in GEMINI_API_KEY to use Gemini's API-key backend instead — no
+      # GCP project or ADC file needed either way.
       EXTRACTOR_PROVIDER: ${EXTRACTOR_PROVIDER:-openrouter}
       EMBEDDER_PROVIDER: ${EMBEDDER_PROVIDER:-openrouter}
       OPENROUTER_EXTRACTOR_APIKEY: ${OPENROUTER_API_KEY:-}
@@ -94,7 +94,6 @@ services:
 
       GEMINI_EXTRACTOR_APIKEY: ${GEMINI_API_KEY:-}
       GEMINI_EMBEDDING_APIKEY: ${GEMINI_API_KEY:-}
-      GOOGLE_APPLICATION_CREDENTIALS: /app/creds/creds.json
 
       FFMPEG_SERVICE_URI: http://ffmpeg-service:7005
 
@@ -103,7 +102,6 @@ services:
       - "127.0.0.1:7001:7001"
     volumes:
       - "./storage-service/config.yaml:/app/config/config.yaml"
-      - "${GOOGLE_CREDS_PATH:-$HOME/.config/gcloud/application_default_credentials.json}:/app/creds/creds.json"
     networks:
       - env
     healthcheck:
