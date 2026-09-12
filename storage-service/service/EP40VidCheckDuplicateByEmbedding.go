@@ -37,7 +37,7 @@ func (s *CheckDuplicateByEmbeddingVideoPipelineStep) Do(ctx context.Context, inp
 
 		items, _, err := s.metadata.GetDuplicatesByEmbeddingOrderByImageId(
 			ctx,
-			inputContext.AccountId,
+			[]uuid.UUID{inputContext.AccountId},
 			pCtx.Embedding[i],
 			excludeIds,
 			s.searchConfig.SemanticDuplicateThreshold,
@@ -56,7 +56,7 @@ func (s *CheckDuplicateByEmbeddingVideoPipelineStep) Do(ctx context.Context, inp
 	for id, idMatchedCount := range lastMatched {
 		s.slogger.InfoContext(ctx, "Check matched duplicate", "id", id, "idMatchedCount", idMatchedCount)
 		if float64(idMatchedCount)/allEmbeddingsLen >= s.searchConfig.PercentageDuplicatePartsThreshold {
-			dupById, err := s.metadata.GetById(ctx, inputContext.AccountId, id)
+			dupById, err := s.metadata.GetById(ctx, []uuid.UUID{inputContext.AccountId}, id)
 			if err != nil {
 				return fmt.Errorf("error getting duplicate record by id: %w", err)
 			}

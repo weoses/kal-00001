@@ -35,7 +35,7 @@ func (s *CheckDuplicateByEmbeddingImgPipelineStep) Do(ctx context.Context, input
 
 	items, _, err := s.metadata.GetDuplicatesByEmbeddingOrderByImageId(
 		ctx,
-		inputContext.AccountId,
+		[]uuid.UUID{inputContext.AccountId},
 		pCtx.Embedding[0],
 		excludeIds,
 		s.searchConfig.SemanticDuplicateThreshold,

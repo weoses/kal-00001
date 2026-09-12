@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
@@ -18,6 +19,22 @@ import (
 	"github.com/weoses/memelo/storage-service/key"
 	"github.com/weoses/memelo/storage-service/service"
 )
+
+// parseAccountIds parses a non-empty list of account id strings into uuid.UUIDs.
+func parseAccountIds(ids []string) ([]uuid.UUID, error) {
+	if len(ids) == 0 {
+		return nil, fmt.Errorf("account_ids is empty")
+	}
+	result := make([]uuid.UUID, len(ids))
+	for i, id := range ids {
+		parsed, err := uuid.Parse(id)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing account_ids[%d]: %w", i, err)
+		}
+		result[i] = parsed
+	}
+	return result, nil
+}
 
 type SearchServiceApi struct {
 	crud        service.MemeCrudService
@@ -172,13 +189,13 @@ func (api *SearchServiceApi) metadataToMemeDto(urls *service.MetadataWithUrls) *
 }
 
 func (api *SearchServiceApi) SearchMeme(ctx context.Context, req *v1.SearchMemeRequest) (*v1.SearchMemeResponse, error) {
-	ctx = context.WithValue(ctx, key.AccountId, req.AccountId)
+	ctx = context.WithValue(ctx, key.AccountId, strings.Join(req.AccountIds, ","))
 
 	api.slogger.InfoContext(ctx, "SearchMeme request", "query", req.Query)
 
-	accountIdUuid, err := uuid.Parse(req.AccountId)
+	accountIds, err := parseAccountIds(req.AccountIds)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing AccountId: %w", err)
+		return nil, fmt.Errorf("error parsing AccountIds: %w", err)
 	}
 
 	afterId := pipelineAfterIDFromProto(req.AfterId)
@@ -193,7 +210,7 @@ func (api *SearchServiceApi) SearchMeme(ctx context.Context, req *v1.SearchMemeR
 		metadataType = &mt
 	}
 
-	data, err := api.crud.SearchMeme(ctx, accountIdUuid, req.Query, metadataType, afterId, pageSize)
+	data, err := api.crud.SearchMeme(ctx, accountIds, req.Query, metadataType, afterId, pageSize)
 	if err != nil {
 		api.slogger.ErrorContext(ctx, "SearchMeme error", "query", req.Query)
 		return nil, err
@@ -283,17 +300,17 @@ func (api *SearchServiceApi) GetMeme(ctx context.Context, req *v1.GetMemeRequest
 }
 
 func (api *SearchServiceApi) GetRandomMeme(ctx context.Context, req *v1.GetRandomMemeRequest) (*v1.GetRandomMemeResponse, error) {
-	ctx = context.WithValue(ctx, key.AccountId, req.AccountId)
+	ctx = context.WithValue(ctx, key.AccountId, strings.Join(req.AccountIds, ","))
 
-	accountId, err := uuid.Parse(req.AccountId)
+	accountIds, err := parseAccountIds(req.AccountIds)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing AccountId: %w", err)
+		return nil, fmt.Errorf("error parsing AccountIds: %w", err)
 	}
 
 	mediaType := entity.MetadataType(req.GetType())
 
-	api.slogger.InfoContext(ctx, "GetRandomMeme request", "accountId", req.AccountId, "type", req.GetType())
-	result, err := api.crud.GetRandomMeme(ctx, accountId, mediaType)
+	api.slogger.InfoContext(ctx, "GetRandomMeme request", "accountIds", req.AccountIds, "type", req.GetType())
+	result, err := api.crud.GetRandomMeme(ctx, accountIds, mediaType)
 	if errors.Is(err, service.ErrMemeNotFound) {
 		return nil, connect.NewError(connect.CodeNotFound, err)
 	}

@@ -55,20 +55,24 @@ func (c *TestClient) SearchMeme(ctx context.Context, accountID, query string, pa
 }
 
 func (c *TestClient) SearchMemePage(ctx context.Context, accountID, query string, pageSize int32, cursor *v1.PipelinePagination) (*v1.SearchMemeResponse, error) {
+	return c.SearchMemePageMulti(ctx, []string{accountID}, query, pageSize, cursor)
+}
+
+func (c *TestClient) SearchMemePageMulti(ctx context.Context, accountIDs []string, query string, pageSize int32, cursor *v1.PipelinePagination) (*v1.SearchMemeResponse, error) {
 	return c.search.SearchMeme(ctx, &v1.SearchMemeRequest{
-		AccountId: accountID,
-		Query:     query,
-		PageSize:  pageSize,
-		AfterId:   cursor,
+		AccountIds: accountIDs,
+		Query:      query,
+		PageSize:   pageSize,
+		AfterId:    cursor,
 	})
 }
 
 func (c *TestClient) SearchMemeWithType(ctx context.Context, accountID, query string, pageSize int32, mediaType *string) (*v1.SearchMemeResponse, error) {
 	return c.search.SearchMeme(ctx, &v1.SearchMemeRequest{
-		AccountId: accountID,
-		Query:     query,
-		PageSize:  pageSize,
-		Type:      mediaType,
+		AccountIds: []string{accountID},
+		Query:      query,
+		PageSize:   pageSize,
+		Type:       mediaType,
 	})
 }
 
@@ -95,7 +99,11 @@ func (c *TestClient) UpdateMeme(ctx context.Context, req *v1.UpdateMemeRequest) 
 }
 
 func (c *TestClient) GetRandomMeme(ctx context.Context, accountID string, mediaType string) (*v1.GetRandomMemeResponse, error) {
-	req := &v1.GetRandomMemeRequest{AccountId: accountID}
+	return c.GetRandomMemeMulti(ctx, []string{accountID}, mediaType)
+}
+
+func (c *TestClient) GetRandomMemeMulti(ctx context.Context, accountIDs []string, mediaType string) (*v1.GetRandomMemeResponse, error) {
+	req := &v1.GetRandomMemeRequest{AccountIds: accountIDs}
 	if mediaType != "" {
 		req.Type = &mediaType
 	}

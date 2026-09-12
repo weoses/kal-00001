@@ -51,13 +51,13 @@ type UpdateMemeInput struct {
 }
 
 type MemeCrudService interface {
-	SearchMeme(ctx context.Context, accountId uuid.UUID, query string, metadataType *entity.MetadataType, afterId *PipelineAfterID, size int) (*SearchResult, error)
+	SearchMeme(ctx context.Context, accountIds []uuid.UUID, query string, metadataType *entity.MetadataType, afterId *PipelineAfterID, size int) (*SearchResult, error)
 	CreateMeme(ctx context.Context, accountId uuid.UUID, typ entity.MetadataType, raw temp.S3BackedData) (*CreateResult, error)
 	GetMeme(ctx context.Context, accountId uuid.UUID, id uuid.UUID) (*MetadataWithUrls, error)
 	UpdateMeme(ctx context.Context, input UpdateMemeInput) (*MetadataWithUrls, error)
 	DeleteMeme(ctx context.Context, accountId uuid.UUID, id uuid.UUID) error
 	DeleteAll(ctx context.Context, accountId uuid.UUID) error
-	GetRandomMeme(ctx context.Context, accountId uuid.UUID, mediaType entity.MetadataType) (*MetadataWithUrls, error)
+	GetRandomMeme(ctx context.Context, accountIds []uuid.UUID, mediaType entity.MetadataType) (*MetadataWithUrls, error)
 }
 
 type MemeCrudServiceImpl struct {
@@ -124,8 +124,8 @@ func (m *MemeCrudServiceImpl) CreateMeme(ctx context.Context, accountId uuid.UUI
 	}, nil
 }
 
-func (m *MemeCrudServiceImpl) SearchMeme(ctx context.Context, accountId uuid.UUID, query string, metadataType *entity.MetadataType, afterId *PipelineAfterID, size int) (*SearchResult, error) {
-	elasticData, err := m.searchService.Search(ctx, accountId, query, metadataType, afterId, size)
+func (m *MemeCrudServiceImpl) SearchMeme(ctx context.Context, accountIds []uuid.UUID, query string, metadataType *entity.MetadataType, afterId *PipelineAfterID, size int) (*SearchResult, error) {
+	elasticData, err := m.searchService.Search(ctx, accountIds, query, metadataType, afterId, size)
 	if err != nil {
 		return nil, fmt.Errorf("search_pipeline service failed: %w", err)
 	}
@@ -142,7 +142,7 @@ func (m *MemeCrudServiceImpl) SearchMeme(ctx context.Context, accountId uuid.UUI
 }
 
 func (m *MemeCrudServiceImpl) UpdateMeme(ctx context.Context, input UpdateMemeInput) (*MetadataWithUrls, error) {
-	existing, err := m.metadataStorageService.GetById(ctx, input.AccountId, input.Id)
+	existing, err := m.metadataStorageService.GetById(ctx, []uuid.UUID{input.AccountId}, input.Id)
 	if err != nil {
 		return nil, fmt.Errorf("get metadata failed: %w", err)
 	}
@@ -221,7 +221,7 @@ func (m *MemeCrudServiceImpl) UpdateMeme(ctx context.Context, input UpdateMemeIn
 }
 
 func (m *MemeCrudServiceImpl) GetMeme(ctx context.Context, accountId uuid.UUID, id uuid.UUID) (*MetadataWithUrls, error) {
-	existing, err := m.metadataStorageService.GetById(ctx, accountId, id)
+	existing, err := m.metadataStorageService.GetById(ctx, []uuid.UUID{accountId}, id)
 	if err != nil {
 		return nil, fmt.Errorf("get metadata failed: %w", err)
 	}
@@ -235,12 +235,12 @@ func (m *MemeCrudServiceImpl) GetMeme(ctx context.Context, accountId uuid.UUID, 
 	return results[0], nil
 }
 
-func (m *MemeCrudServiceImpl) GetRandomMeme(ctx context.Context, accountId uuid.UUID, mediaType entity.MetadataType) (*MetadataWithUrls, error) {
+func (m *MemeCrudServiceImpl) GetRandomMeme(ctx context.Context, accountIds []uuid.UUID, mediaType entity.MetadataType) (*MetadataWithUrls, error) {
 	var metadataType *entity.MetadataType
 	if mediaType != "" {
 		metadataType = &mediaType
 	}
-	result, err := m.metadataStorageService.GetRandom(ctx, accountId, metadataType)
+	result, err := m.metadataStorageService.GetRandom(ctx, accountIds, metadataType)
 	if err != nil {
 		return nil, fmt.Errorf("GetRandomMeme: %w", err)
 	}
@@ -255,7 +255,7 @@ func (m *MemeCrudServiceImpl) GetRandomMeme(ctx context.Context, accountId uuid.
 }
 
 func (m *MemeCrudServiceImpl) DeleteMeme(ctx context.Context, accountId uuid.UUID, id uuid.UUID) error {
-	metadata, err := m.metadataStorageService.GetById(ctx, accountId, id)
+	metadata, err := m.metadataStorageService.GetById(ctx, []uuid.UUID{accountId}, id)
 	if err != nil {
 		return fmt.Errorf("get metadataService failed: %w", err)
 	}
@@ -269,7 +269,7 @@ func (m *MemeCrudServiceImpl) DeleteMeme(ctx context.Context, accountId uuid.UUI
 		return fmt.Errorf("delete image failed: %w", err)
 	}
 
-	if err = m.metadataStorageService.DeleteById(ctx, accountId, id); err != nil {
+	if err = m.metadataStorageService.DeleteById(ctx, []uuid.UUID{accountId}, id); err != nil {
 		return fmt.Errorf("delete metadataService failed: %w", err)
 	}
 
@@ -279,9 +279,10 @@ func (m *MemeCrudServiceImpl) DeleteMeme(ctx context.Context, accountId uuid.UUI
 func (m *MemeCrudServiceImpl) DeleteAll(ctx context.Context, accountId uuid.UUID) error {
 	const pageSize = 100
 	var sortKey entity.ElasticSortKey
+	accountIds := []uuid.UUID{accountId}
 
 	for {
-		results, nextKey, err := m.metadataStorageService.GetByAccountIdOrderByCreated(ctx, accountId, nil, sortKey, pageSize)
+		results, nextKey, err := m.metadataStorageService.GetByAccountIdOrderByCreated(ctx, accountIds, nil, sortKey, pageSize)
 		if err != nil {
 			return fmt.Errorf("list memes failed: %w", err)
 		}
@@ -298,7 +299,7 @@ func (m *MemeCrudServiceImpl) DeleteAll(ctx context.Context, accountId uuid.UUID
 				m.slogger.WarnContext(ctx, "delete s3 image failed", "s3Id", meta.S3Id, "error", errMinioThumb)
 			}
 
-			errElastic := m.metadataStorageService.DeleteById(ctx, accountId, meta.ImageId)
+			errElastic := m.metadataStorageService.DeleteById(ctx, accountIds, meta.ImageId)
 			if errElastic != nil {
 				m.slogger.WarnContext(ctx, "delete elastic failed", "imageId", meta.ImageId, "error", errElastic)
 			}

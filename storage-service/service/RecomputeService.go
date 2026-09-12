@@ -248,7 +248,7 @@ func (r *RecomputeServiceImpl) recomputeOne(ctx context.Context, data *entity.El
 		r.slogger.InfoContext(ctx, "recompute: deleting duplicate entity",
 			"duplicateImageId", pipelineResult.Duplicate.ImageId)
 
-		errMetadataDelete := r.metadataStorageService.DeleteById(ctx, data.AccountId, pipelineResult.Duplicate.ImageId)
+		errMetadataDelete := r.metadataStorageService.DeleteById(ctx, []uuid.UUID{data.AccountId}, pipelineResult.Duplicate.ImageId)
 		errOrigDelete := r.imageStorageService.Delete(ctx, data.S3Id, storageMediaType(data.Type, SavedOriginal))
 		errThumbDelete := r.imageStorageService.Delete(ctx, data.S3Id, storageMediaType(data.Type, SavedThumb))
 
@@ -276,7 +276,7 @@ func (r *RecomputeServiceImpl) RecomputeOneById(ctx context.Context, accountId s
 	if err != nil {
 		return fmt.Errorf("invalid media_id: %w", err)
 	}
-	data, err := r.metadataStorageService.GetById(ctx, accountUuid, idUuid)
+	data, err := r.metadataStorageService.GetById(ctx, []uuid.UUID{accountUuid}, idUuid)
 	if err != nil {
 		return fmt.Errorf("fetch metadata failed: %w", err)
 	}
