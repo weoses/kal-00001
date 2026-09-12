@@ -1,0 +1,128 @@
+# Structural defaults, shared across environments.
+# Env-specific overrides (domains, buckets, indices, replica counts) live in
+# values-test.yaml / values-production.yaml. Secrets are merged in separately
+# from a SOPS-encrypted file at install time (see secrets/README.md).
+
+image:
+  registry: ghcr.io/weoses
+  # Overridden per-deploy, e.g. `--set image.tag=v1.2.3` (mirrors the old
+  # Ansible `release_version` extra-var).
+  tag: latest
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    memory: 256Mi
+
+# One entry per deployed service. `imageName` is the ghcr.io image basename
+# (appended to image.registry). Service object names match the internal
+# hostnames the Go configs already expect (http://storage-service:PORT, etc.)
+# so config bodies don't need to hardcode anything k8s-specific.
+services:
+  auth-service:
+    imageName: auth-service
+    port: 7006
+    healthPath: /health
+  ffmpeg-service:
+    imageName: ffmpeg-service
+    port: 7005
+    healthPath: /health
+    # ffmpeg-service does real transcoding work, give it more headroom.
+    resources:
+      requests:
+        cpu: 200m
+        memory: 128Mi
+      limits:
+        memory: 1Gi
+  storage-service:
+    imageName: storage-service
+    port: 7001
+    healthPath: /health
+  telegram-service:
+    imageName: telegram-service
+    port: 7002
+    healthPath: /health
+  youtube-service:
+    imageName: youtube-service
+    port: 7004
+    healthPath: /health
+  webapp-service:
+    imageName: webapp-service
+    port: 7003
+    healthPath: /api/health
+
+# --- Non-secret app settings (overridden per env) ---
+s3:
+  endpoint: "storage.googleapis.com"
+  secure: true
+  mediaBucket: ""
+  tempBucket: ""
+
+elastic:
+  metadataIndex: ""
+  tagIndex: ""
+
+postgres:
+  authDb: auth
+  telegramDb: telegram
+
+ffmpeg:
+  cpuLimit: 80
+  threadsLimit: ""
+
+extracting:
+  separateAudio: true
+  videoSliceIntervalSec: 15
+
+providers:
+  extractor: openrouter
+  embedder: gemini
+
+gemini:
+  embeddingModel: "gemini-embedding-2-preview"
+  embeddingApiEndpoint: ""
+  extractorModelImage: "gemini-2.5-flash"
+  extractorModelVideo: "gemini-2.5-flash"
+  extractorModelAudio: "gemini-2.5-flash"
+  extractorApiEndpoint: ""
+
+openrouter:
+  embeddingModel: ""
+  extractorModelImage: "google/gemini-3-flash-preview"
+  extractorModelVideo: "google/gemini-3-flash-preview"
+  extractorModelAudio: "google/gemini-3-flash-preview"
+
+webapp:
+  # webapp-service is now served at its own domain root, no shared proxy prefix.
+  baseUrl: "/"
+
+permissions:
+  createAllowed: []
+  deleteAllowed: []
+  recomputeAllowed: []
+  searchAllowed: []
+
+# --- Ingress ---
+# Only webapp-service (the user-facing app) and telegram-service's /webhook
+# are exposed publicly. storage-service, auth-service, ffmpeg-service and
+# youtube-service are ClusterIP-only, reached in-cluster by other services.
+ingress:
+  enabled: true
+  className: nginx
+  clusterIssuer: letsencrypt-prod
+  webappDomain: ""
+  webhookDomain: ""
+  maxBodySize: "100m"
+  proxyReadTimeoutSeconds: 600
+
+# --- Secrets placeholder ---
+# Populated by merging a decrypted SOPS values file at install time, e.g.:
+#   helm upgrade --install memelo . -n memelo-test \
+#     -f values.yaml -f values-test.yaml -f <(sops -d secrets/test.enc.yaml)
+# See secrets/test.example.yaml for the full expected shape.
+secrets: {}

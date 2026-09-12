@@ -1,0 +1,50 @@
+{{- range $name, $svc := .Values.services }}
+{{- $resources := $svc.resources | default $.Values.resources }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "memelo.serviceLabels" (dict "root" $ "name" $name) | nindent 4 }}
+spec:
+  replicas: {{ $svc.replicaCount | default $.Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ $name }}
+  template:
+    metadata:
+      labels:
+        {{- include "memelo.serviceLabels" (dict "root" $ "name" $name) | nindent 8 }}
+    spec:
+      containers:
+        - name: {{ $name }}
+          image: {{ include "memelo.image" (dict "root" $ "svc" $svc) }}
+          imagePullPolicy: {{ $.Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ $svc.port }}
+          volumeMounts:
+            - name: config
+              mountPath: /app/config.yaml
+              subPath: config.yaml
+              readOnly: true
+          livenessProbe:
+            httpGet:
+              path: {{ $svc.healthPath }}
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: {{ $svc.healthPath }}
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            {{- toYaml $resources | nindent 12 }}
+      volumes:
+        - name: config
+          secret:
+            secretName: {{ $name }}-config
+---
+{{- end }}

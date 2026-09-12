@@ -1,0 +1,11 @@
+s3:
+  mediaBucket: melo-test-media
+  tempBucket: melo-test-temp
+
+elastic:
+  metadataIndex: melo-test-media-metadata
+  tagIndex: melo-test-tag-metadata
+
+ingress:
+  webappDomain: "webapp.test.cluster.memelo.cloud"   # e.g. test.example.com
+  webhookDomain: "tg-webhook.test.cluster.memelo.cloud"  # e.g. hooks-test.example.com
