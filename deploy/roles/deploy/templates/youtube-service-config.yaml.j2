@@ -1,0 +1,22 @@
+log:
+  Level: info
+
+server:
+  ListenAddress: :{{ youtube_service_port }}
+
+temp-storage:
+  Endpoint: {{ s3_endpoint }}
+  AccessKey: {{ s3_access_key }}
+  SecretKey: {{ s3_secret_key }}
+  Bucket: {{ s3_temp_bucket }}
+  Secure: {{ s3_secure }}
+
+youtube:
+  MaxVideoSizeBytes: 524288000
+  TempDir: "/tmp"
+  MaxConcurrentDownloads: 4
+  JobTtlSeconds: 3600
+  ApiKey: {{ youtube_provider_apikey }}
+  ApiHost: p.savenow.to
+  VideoFormat: "720"
+  MaxDuration: 10

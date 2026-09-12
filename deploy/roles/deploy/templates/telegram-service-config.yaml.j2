@@ -1,0 +1,64 @@
+log:
+  Level: info
+
+server:
+  ListenAddress: :{{ telegram_service_port }}
+
+telegram:
+  Token: {{ telegram_token }}
+  Debug: false
+
+inline:
+  PageSize: 20
+
+
+storage-service:
+  Uri: "http://storage-service:{{ storage_service_port }}"
+
+auth-service:
+  Uri: "http://auth-service:{{ auth_service_port }}"
+
+postgres:
+  Dsn: "postgres://{{ postgres_user }}:{{ postgres_password }}@postgres:5432/{{ telegram_postgres_db }}?sslmode=disable"
+
+user-account:
+  StaticUuid: "00000000-0000-0000-0000-000000000000"
+
+webhook:
+  ExternalUrl: "{{ telegram_webhook_externalurl }}"
+
+temp-storage:
+  Endpoint: {{ s3_endpoint }}
+  AccessKey: {{ s3_access_key }}
+  SecretKey: {{ s3_secret_key }}
+  Bucket: {{ s3_temp_bucket }}
+  Secure: {{ s3_secure }}
+
+permissions:
+    Create:
+      AllowedUserIds:
+      {% for item in permissions.create_allowed %}
+        - {{ item }}
+      {% endfor %}
+
+    Delete:
+      AllowedUserIds:
+       {% for item in permissions.delete_allowed %}
+          - {{ item }}
+       {% endfor %}
+
+    Recompute:
+      AllowedUserIds:
+       {% for item in permissions.recompute_allowed %}
+          - {{ item }}
+       {% endfor %}
+
+    Search:
+      AllowedUserIds:
+       {% for item in permissions.search_allowed %}
+          - {{ item }}
+       {% endfor %}
+
+
+youtube-service:
+  Uri: "http://youtube-service:7004"

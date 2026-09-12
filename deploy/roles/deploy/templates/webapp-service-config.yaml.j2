@@ -1,0 +1,24 @@
+log:
+  Level: info
+
+server:
+  ListenAddress: :{{ webapp_service_port }}
+
+storage-service:
+  Uri: "http://storage-service:{{ storage_service_port }}"
+
+account:
+  Id: "{{ webapp_account_id }}"
+
+temp-storage:
+  Endpoint: {{ s3_endpoint }}
+  AccessKey: {{ s3_access_key }}
+  SecretKey: {{ s3_secret_key }}
+  Bucket: {{ s3_temp_bucket }}
+  Secure: {{ s3_secure }}
+
+jwt:
+  Secret: "{{ webapp_jwt_secret }}"
+
+frontend:
+  BaseUrl: {{ webapp_base_url }}

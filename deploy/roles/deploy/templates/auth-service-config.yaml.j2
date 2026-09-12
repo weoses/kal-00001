@@ -1,0 +1,8 @@
+log:
+  Level: info
+
+server:
+  ListenAddress: :{{ auth_service_port }}
+
+postgres:
+  Dsn: "postgres://{{ postgres_user }}:{{ postgres_password }}@postgres:5432/{{ auth_postgres_db }}?sslmode=disable"

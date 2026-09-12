@@ -1,0 +1,6 @@
+.env
+
+# SOPS decrypted secret files (never commit)
+helm/secrets/*.dec
+# age private key (never commit)
+key.txt
