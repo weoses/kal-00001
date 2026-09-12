@@ -14,21 +14,21 @@ import (
 )
 
 type MemeResult struct {
-	Id              string   `json:"id"`
-	Caption         string   `json:"caption"`
-	Type            string   `json:"type"`
-	OcrResult       string   `json:"ocr_result"`
-	OnScreenText    string   `json:"on_screen_text"`
-	AudioTranscript string   `json:"audio_transcript"`
-	AudioTrack      string   `json:"audio_track"`
-	ThumbnailURL    string   `json:"thumbnail_url"`
-	ThumbnailW      int32    `json:"thumbnail_w"`
-	ThumbnailH      int32    `json:"thumbnail_h"`
-	OriginalURL     string   `json:"original_url"`
-	OriginalW       int32    `json:"original_w"`
-	OriginalH       int32    `json:"original_h"`
-	Status          string   `json:"status"`
-	Edited          bool     `json:"edited"`
+	Id              string `json:"id"`
+	Caption         string `json:"caption"`
+	Type            string `json:"type"`
+	OcrResult       string `json:"ocr_result"`
+	OnScreenText    string `json:"on_screen_text"`
+	AudioTranscript string `json:"audio_transcript"`
+	AudioTrack      string `json:"audio_track"`
+	ThumbnailURL    string `json:"thumbnail_url"`
+	ThumbnailW      int32  `json:"thumbnail_w"`
+	ThumbnailH      int32  `json:"thumbnail_h"`
+	OriginalURL     string `json:"original_url"`
+	OriginalW       int32  `json:"original_w"`
+	OriginalH       int32  `json:"original_h"`
+	Status          string `json:"status"`
+	Edited          bool   `json:"edited"`
 }
 
 type UpdateParams struct {
@@ -75,10 +75,10 @@ func NewStorageProxy(cfg *conf.Config) (StorageProxy, error) {
 
 func (s *storageProxy) Search(ctx context.Context, accountId, query string, metadataType *string, afterId *Pagination, limit int32) (*SearchResult, error) {
 	req := &v1.SearchMemeRequest{
-		AccountId: accountId,
-		Query:     query,
-		PageSize:  limit,
-		Type:      metadataType,
+		AccountIds: []string{accountId},
+		Query:      query,
+		PageSize:   limit,
+		Type:       metadataType,
 	}
 	if afterId != nil && afterId.Searcher != "" {
 		req.AfterId = &v1.PipelinePagination{

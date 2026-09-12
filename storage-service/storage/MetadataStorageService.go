@@ -93,11 +93,11 @@ type MetadataStorageService interface {
 		pageSize int,
 	) ([]*entity.ElasticImageMetaData, entity.ElasticSortKey, error)
 
-	GetById(ctx context.Context, accountId uuid.UUID, id uuid.UUID) (*entity.ElasticImageMetaData, error)
+	GetById(ctx context.Context, accountIds []uuid.UUID, id uuid.UUID) (*entity.ElasticImageMetaData, error)
 
 	GetByAccountIdOrderByCreated(
 		ctx context.Context,
-		accountId uuid.UUID,
+		accountIds []uuid.UUID,
 		metadataType *entity.MetadataType,
 		sortKey entity.ElasticSortKey,
 		pageSize int,
@@ -105,7 +105,7 @@ type MetadataStorageService interface {
 
 	SearchHybridOrderByScore(
 		ctx context.Context,
-		accountId uuid.UUID,
+		accountIds []uuid.UUID,
 		query string,
 		embedding entity.EmbeddingItem,
 		fuzziness string,
@@ -116,7 +116,7 @@ type MetadataStorageService interface {
 
 	GetDuplicatesByHash(
 		ctx context.Context,
-		accountId uuid.UUID,
+		accountIds []uuid.UUID,
 		hash string,
 		excludeIds []uuid.UUID,
 		sortKey entity.ElasticSortKey,
@@ -125,7 +125,7 @@ type MetadataStorageService interface {
 
 	GetDuplicatesByEmbeddingOrderByImageId(
 		ctx context.Context,
-		accountId uuid.UUID,
+		accountIds []uuid.UUID,
 		embedding entity.EmbeddingItem,
 		excludeIds []uuid.UUID,
 		threshold float64,
@@ -133,12 +133,12 @@ type MetadataStorageService interface {
 		pageSize int,
 	) ([]*entity.ElasticImageMetaData, entity.ElasticSortKey, error)
 
-	DeleteById(ctx context.Context, accountId uuid.UUID, id uuid.UUID) error
-	DeleteByAccountId(ctx context.Context, accountId uuid.UUID) error
+	DeleteById(ctx context.Context, accountIds []uuid.UUID, id uuid.UUID) error
+	DeleteByAccountId(ctx context.Context, accountIds []uuid.UUID) error
 
 	QueryByRaw(ctx context.Context, rawQuery map[string]interface{}, sortKey entity.ElasticSortKey, pageSize int) ([]*entity.ElasticImageMetaData, entity.ElasticSortKey, error)
 
-	GetRandom(ctx context.Context, accountId uuid.UUID, metadataType *entity.MetadataType) (*entity.ElasticImageMetaData, error)
+	GetRandom(ctx context.Context, accountIds []uuid.UUID, metadataType *entity.MetadataType) (*entity.ElasticImageMetaData, error)
 }
 
 type ElasticMetadataStorageServiceImpl struct {
@@ -152,7 +152,7 @@ type ElasticMetadataStorageServiceImpl struct {
 
 func (e *ElasticMetadataStorageServiceImpl) GetByAccountIdOrderByCreated(
 	ctx context.Context,
-	accountId uuid.UUID,
+	accountIds []uuid.UUID,
 	metadataType *entity.MetadataType,
 	sortKey entity.ElasticSortKey,
 	pageSize int,
@@ -164,7 +164,7 @@ func (e *ElasticMetadataStorageServiceImpl) GetByAccountIdOrderByCreated(
 
 	q := types.NewQuery()
 	q.Bool = types.NewBoolQuery()
-	q.Bool.Filter = []types.Query{*e.accountIdQuery(accountId)}
+	q.Bool.Filter = []types.Query{*e.accountIdsQuery(accountIds)}
 	if tq := e.typeQuery(metadataType); tq != nil {
 		q.Bool.Filter = append(q.Bool.Filter, *tq)
 	}
@@ -178,7 +178,7 @@ func (e *ElasticMetadataStorageServiceImpl) GetByAccountIdOrderByCreated(
 
 	results, err := e.unmarshalResults(result)
 	if err != nil {
-		return nil, nil, fmt.Errorf("search_pipeline by account id failed: accountId=%s  sortKey=%v: %w", accountId.String(), sortKey, err)
+		return nil, nil, fmt.Errorf("search_pipeline by account id failed: accountIds=%v  sortKey=%v: %w", accountIds, sortKey, err)
 	}
 
 	return results, extractSortKey(result), nil
@@ -237,7 +237,7 @@ func (e *ElasticMetadataStorageServiceImpl) GetAll(
 
 func (e *ElasticMetadataStorageServiceImpl) GetDuplicatesByEmbeddingOrderByImageId(
 	ctx context.Context,
-	accountId uuid.UUID,
+	accountIds []uuid.UUID,
 	embedding entity.EmbeddingItem,
 	excludeIds []uuid.UUID,
 	threshold float64,
@@ -246,8 +246,8 @@ func (e *ElasticMetadataStorageServiceImpl) GetDuplicatesByEmbeddingOrderByImage
 ) ([]*entity.ElasticImageMetaData, entity.ElasticSortKey, error) {
 	e.slogger.InfoContext(ctx, "GetDuplicatesByEmbeddingOrderByImageId start", "pageSize", pageSize)
 
-	accountIdFilter := e.accountIdQuery(accountId)
-	knnQuery := e.embeddingV1KnnAllQuery(embedding, accountIdFilter, pageSize)
+	accountIdsFilter := e.accountIdsQuery(accountIds)
+	knnQuery := e.embeddingV1KnnAllQuery(embedding, accountIdsFilter, pageSize)
 	if len(excludeIds) > 0 {
 		excludeQ := types.NewQuery()
 		excludeQ.Ids = types.NewIdsQuery()
@@ -296,23 +296,23 @@ func (e *ElasticMetadataStorageServiceImpl) GetDuplicatesByEmbeddingOrderByImage
 	return resultsEntity, extractSortKey(resp), nil
 }
 
-func (e *ElasticMetadataStorageServiceImpl) DeleteByAccountId(ctx context.Context, accountId uuid.UUID) error {
-	e.slogger.InfoContext(ctx, "DeleteByAccountId: delete request", "accountId", accountId)
+func (e *ElasticMetadataStorageServiceImpl) DeleteByAccountId(ctx context.Context, accountIds []uuid.UUID) error {
+	e.slogger.InfoContext(ctx, "DeleteByAccountId: delete request", "accountIds", accountIds)
 
 	result, err := e.client.DeleteByQuery(e.indexName).
 		Refresh(true).
-		Query(e.accountIdQuery(accountId)).
+		Query(e.accountIdsQuery(accountIds)).
 		Do(ctx)
 
 	if err != nil {
 		return fmt.Errorf("DeleteByAccountId query failed: %w", err)
 	}
 
-	e.slogger.InfoContext(ctx, "DeleteByAccountId: delete response", "accountId", accountId, "deleted", result.Deleted)
+	e.slogger.InfoContext(ctx, "DeleteByAccountId: delete response", "accountIds", accountIds, "deleted", result.Deleted)
 	return nil
 }
 
-func (e *ElasticMetadataStorageServiceImpl) DeleteById(ctx context.Context, accountId uuid.UUID, id uuid.UUID) error {
+func (e *ElasticMetadataStorageServiceImpl) DeleteById(ctx context.Context, accountIds []uuid.UUID, id uuid.UUID) error {
 	e.slogger.InfoContext(ctx, "DeleteById: delete request",
 		"id", id)
 
@@ -320,7 +320,7 @@ func (e *ElasticMetadataStorageServiceImpl) DeleteById(ctx context.Context, acco
 	query.Bool = types.NewBoolQuery()
 	query.Bool.Must = []types.Query{
 		*e.idQuery(id),
-		*e.accountIdQuery(accountId),
+		*e.accountIdsQuery(accountIds),
 	}
 
 	result, err := e.client.DeleteByQuery(e.indexName).
@@ -337,7 +337,7 @@ func (e *ElasticMetadataStorageServiceImpl) DeleteById(ctx context.Context, acco
 	return nil
 }
 
-func (e *ElasticMetadataStorageServiceImpl) GetById(ctx context.Context, accountId uuid.UUID, id uuid.UUID) (*entity.ElasticImageMetaData, error) {
+func (e *ElasticMetadataStorageServiceImpl) GetById(ctx context.Context, accountIds []uuid.UUID, id uuid.UUID) (*entity.ElasticImageMetaData, error) {
 	e.slogger.InfoContext(ctx, "GetById: call",
 		"id", id.String())
 
@@ -345,7 +345,7 @@ func (e *ElasticMetadataStorageServiceImpl) GetById(ctx context.Context, account
 
 	query.Bool = types.NewBoolQuery()
 	query.Bool.Must = []types.Query{
-		*e.accountIdQuery(accountId),
+		*e.accountIdsQuery(accountIds),
 		*e.idQuery(id),
 	}
 
@@ -372,7 +372,7 @@ func (e *ElasticMetadataStorageServiceImpl) GetById(ctx context.Context, account
 
 func (e *ElasticMetadataStorageServiceImpl) GetDuplicatesByHash(
 	ctx context.Context,
-	accountId uuid.UUID,
+	accountIds []uuid.UUID,
 	hash string,
 	excludeIds []uuid.UUID,
 	sortKey entity.ElasticSortKey,
@@ -385,7 +385,7 @@ func (e *ElasticMetadataStorageServiceImpl) GetDuplicatesByHash(
 
 	query.Bool = types.NewBoolQuery()
 	query.Bool.Must = []types.Query{
-		*e.accountIdQuery(accountId),
+		*e.accountIdsQuery(accountIds),
 		*e.hashQuery(hash),
 	}
 	if len(excludeIds) > 0 {
@@ -432,7 +432,7 @@ func (e *ElasticMetadataStorageServiceImpl) GetDuplicatesByHash(
 
 func (e *ElasticMetadataStorageServiceImpl) SearchHybridOrderByScore(
 	ctx context.Context,
-	accountId uuid.UUID,
+	accountIds []uuid.UUID,
 	query string,
 	embedding entity.EmbeddingItem,
 	fuzziness string,
@@ -442,12 +442,12 @@ func (e *ElasticMetadataStorageServiceImpl) SearchHybridOrderByScore(
 ) ([]*entity.ElasticImageMetaData, entity.ElasticSortKey, error) {
 	e.slogger.InfoContext(ctx, "SearchHybridOrderByScore start", "query", query, "pageSize", pageSize)
 
-	accountIdFilter := e.accountIdQuery(accountId)
-	bm25Query := e.stringAndAccountQuery(accountId, query, fuzziness)
+	accountIdsFilter := e.accountIdsQuery(accountIds)
+	bm25Query := e.stringAndAccountQuery(accountIds, query, fuzziness)
 	if tq := e.typeQuery(metadataType); tq != nil {
 		bm25Query.Bool.Must = append(bm25Query.Bool.Must, *tq)
 	}
-	knnFilters := []types.Query{*accountIdFilter}
+	knnFilters := []types.Query{*accountIdsFilter}
 	if tq := e.typeQuery(metadataType); tq != nil {
 		knnFilters = append(knnFilters, *tq)
 	}
@@ -587,16 +587,18 @@ func (e *ElasticMetadataStorageServiceImpl) typeQuery(t *entity.MetadataType) *t
 	return q
 }
 
-func (e *ElasticMetadataStorageServiceImpl) accountIdQuery(accountId uuid.UUID) *types.Query {
-	accountIdQuery := types.NewQuery()
-	accountIdQuery.Match = map[string]types.MatchQuery{
-		"AccountId": {
-			Query:     accountId.String(),
-			Fuzziness: 0,
-			Operator:  &operator.And,
-		},
+func (e *ElasticMetadataStorageServiceImpl) accountIdsQuery(accountIds []uuid.UUID) *types.Query {
+	values := make([]types.FieldValue, len(accountIds))
+	for i, id := range accountIds {
+		values[i] = id.String()
 	}
-	return accountIdQuery
+
+	q := types.NewQuery()
+	q.Terms = types.NewTermsQuery()
+	q.Terms.TermsQuery = map[string]types.TermsQueryField{
+		"AccountId": values,
+	}
+	return q
 }
 
 func (e *ElasticMetadataStorageServiceImpl) idQuery(
@@ -622,7 +624,7 @@ func (e *ElasticMetadataStorageServiceImpl) hashQuery(
 }
 
 func (e *ElasticMetadataStorageServiceImpl) stringAndAccountQuery(
-	accountId uuid.UUID,
+	accountIds []uuid.UUID,
 	queryString string,
 	fuzziness string,
 ) *types.Query {
@@ -638,7 +640,7 @@ func (e *ElasticMetadataStorageServiceImpl) stringAndAccountQuery(
 	query := types.NewQuery()
 	query.Bool = types.NewBoolQuery()
 	query.Bool.Must = []types.Query{
-		*q1, *e.accountIdQuery(accountId),
+		*q1, *e.accountIdsQuery(accountIds),
 	}
 	return query
 }
@@ -681,12 +683,12 @@ func unmarshalSourceDocument(result json.RawMessage) (*entity.ElasticImageMetaDa
 
 func (e *ElasticMetadataStorageServiceImpl) GetRandom(
 	ctx context.Context,
-	accountId uuid.UUID,
+	accountIds []uuid.UUID,
 	metadataType *entity.MetadataType,
 ) (*entity.ElasticImageMetaData, error) {
 	query := types.NewQuery()
 	query.Bool = types.NewBoolQuery()
-	query.Bool.Filter = []types.Query{*e.accountIdQuery(accountId)}
+	query.Bool.Filter = []types.Query{*e.accountIdsQuery(accountIds)}
 	if metadataType != nil {
 		typeQ := types.NewQuery()
 		typeQ.Match = map[string]types.MatchQuery{

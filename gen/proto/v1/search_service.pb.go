@@ -125,7 +125,7 @@ func (x *MediaDataDto) GetData() []byte {
 
 type SearchMemeRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	AccountId     string                 `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	AccountIds    []string               `protobuf:"bytes,1,rep,name=account_ids,json=accountIds,proto3" json:"account_ids,omitempty"`
 	Query         string                 `protobuf:"bytes,2,opt,name=query,proto3" json:"query,omitempty"`
 	AfterId       *PipelinePagination    `protobuf:"bytes,5,opt,name=after_id,json=afterId,proto3" json:"after_id,omitempty"`
 	PageSize      int32                  `protobuf:"varint,6,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
@@ -164,11 +164,11 @@ func (*SearchMemeRequest) Descriptor() ([]byte, []int) {
 	return file_proto_v1_search_service_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *SearchMemeRequest) GetAccountId() string {
+func (x *SearchMemeRequest) GetAccountIds() []string {
 	if x != nil {
-		return x.AccountId
+		return x.AccountIds
 	}
-	return ""
+	return nil
 }
 
 func (x *SearchMemeRequest) GetQuery() string {
@@ -701,7 +701,7 @@ func (x *UpdateMemeResponse) GetResult() *MemeDto {
 
 type GetRandomMemeRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	AccountId     string                 `protobuf:"bytes,1,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	AccountIds    []string               `protobuf:"bytes,1,rep,name=account_ids,json=accountIds,proto3" json:"account_ids,omitempty"`
 	Type          *string                `protobuf:"bytes,2,opt,name=type,proto3,oneof" json:"type,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -737,11 +737,11 @@ func (*GetRandomMemeRequest) Descriptor() ([]byte, []int) {
 	return file_proto_v1_search_service_proto_rawDescGZIP(), []int{11}
 }
 
-func (x *GetRandomMemeRequest) GetAccountId() string {
+func (x *GetRandomMemeRequest) GetAccountIds() []string {
 	if x != nil {
-		return x.AccountId
+		return x.AccountIds
 	}
-	return ""
+	return nil
 }
 
 func (x *GetRandomMemeRequest) GetType() string {
@@ -805,10 +805,10 @@ const file_proto_v1_search_service_proto_rawDesc = "" +
 	"\x04data\x18\x02 \x01(\fH\x01R\x04data\x88\x01\x01B\n" +
 	"\n" +
 	"\b_s3_pathB\a\n" +
-	"\x05_data\"\xc7\x01\n" +
-	"\x11SearchMemeRequest\x12\x1d\n" +
-	"\n" +
-	"account_id\x18\x01 \x01(\tR\taccountId\x12\x14\n" +
+	"\x05_data\"\xc9\x01\n" +
+	"\x11SearchMemeRequest\x12\x1f\n" +
+	"\vaccount_ids\x18\x01 \x03(\tR\n" +
+	"accountIds\x12\x14\n" +
 	"\x05query\x18\x02 \x01(\tR\x05query\x12>\n" +
 	"\bafter_id\x18\x05 \x01(\v2#.proto.memelo.v1.PipelinePaginationR\aafterId\x12\x1b\n" +
 	"\tpage_size\x18\x06 \x01(\x05R\bpageSize\x12\x17\n" +
@@ -859,10 +859,10 @@ const file_proto_v1_search_service_proto_rawDesc = "" +
 	"\n" +
 	"_thumbnail\"F\n" +
 	"\x12UpdateMemeResponse\x120\n" +
-	"\x06result\x18\x01 \x01(\v2\x18.proto.memelo.v1.MemeDtoR\x06result\"W\n" +
-	"\x14GetRandomMemeRequest\x12\x1d\n" +
-	"\n" +
-	"account_id\x18\x01 \x01(\tR\taccountId\x12\x17\n" +
+	"\x06result\x18\x01 \x01(\v2\x18.proto.memelo.v1.MemeDtoR\x06result\"Y\n" +
+	"\x14GetRandomMemeRequest\x12\x1f\n" +
+	"\vaccount_ids\x18\x01 \x03(\tR\n" +
+	"accountIds\x12\x17\n" +
 	"\x04type\x18\x02 \x01(\tH\x00R\x04type\x88\x01\x01B\a\n" +
 	"\x05_type\"I\n" +
 	"\x15GetRandomMemeResponse\x120\n" +

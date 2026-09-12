@@ -56,10 +56,10 @@ func (s *StorageConnectorImpl) ProcessSearchQuery(
 	pageSize int,
 ) (*entity.SearchQueryResult, error) {
 	req := &v1.SearchMemeRequest{
-		AccountId: accountId.String(),
-		Query:     params.Query,
-		PageSize:  int32(pageSize),
-		Type:      params.Type,
+		AccountIds: []string{accountId.String()},
+		Query:      params.Query,
+		PageSize:   int32(pageSize),
+		Type:       params.Type,
 	}
 	if params.Pagination != nil {
 		req.AfterId = &v1.PipelinePagination{
@@ -139,7 +139,7 @@ func (s *StorageConnectorImpl) CreateMeme(ctx context.Context, data temp.S3Backe
 }
 
 func (s *StorageConnectorImpl) GetRandomMeme(ctx context.Context, accountId uuid.UUID, mediaType string) (*entity.MemeSearchResult, error) {
-	req := &v1.GetRandomMemeRequest{AccountId: accountId.String()}
+	req := &v1.GetRandomMemeRequest{AccountIds: []string{accountId.String()}}
 	if mediaType != "" {
 		req.Type = &mediaType
 	}

@@ -41,7 +41,7 @@ func (e *ExportServiceImpl) Export(
 	callback func(ctx context.Context, items []ExportItem) error,
 ) error {
 	if id != nil {
-		item, err := e.metadataStorageService.GetById(ctx, *accountId, *id)
+		item, err := e.metadataStorageService.GetById(ctx, []uuid.UUID{*accountId}, *id)
 		if err != nil {
 			return fmt.Errorf("export: query metadataService item failed: %w", err)
 		}
@@ -64,7 +64,7 @@ func (e *ExportServiceImpl) Export(
 		var err error
 
 		if accountId != nil {
-			page, nextKey, err = e.metadataStorageService.GetByAccountIdOrderByCreated(ctx, *accountId, nil, sortKey, exportPageSize)
+			page, nextKey, err = e.metadataStorageService.GetByAccountIdOrderByCreated(ctx, []uuid.UUID{*accountId}, nil, sortKey, exportPageSize)
 		} else {
 			page, nextKey, err = e.metadataStorageService.GetAll(ctx, sortKey, exportPageSize)
 		}

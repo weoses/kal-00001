@@ -27,7 +27,7 @@ func (s *CheckDuplicateByHashPipelineStep) Do(
 		excludeIds = append(excludeIds, *inputContext.SeedImageId)
 	}
 
-	items, _, err := s.metadataService.GetDuplicatesByHash(ctx, inputContext.AccountId, pCtx.Hash, excludeIds, nil, 1)
+	items, _, err := s.metadataService.GetDuplicatesByHash(ctx, []uuid.UUID{inputContext.AccountId}, pCtx.Hash, excludeIds, nil, 1)
 	if err != nil {
 		return fmt.Errorf("error getting items by hash: %w", err)
 	}
