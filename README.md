@@ -15,7 +15,9 @@ docker compose up -d --build
 
 This starts everything locally: Elasticsearch, MinIO, Postgres, and all services below. No Google Cloud account needed by default.
 
-`telegram-service` needs a real `TELEGRAM_TOKEN` and a **public** `TELEGRAM_WEBHOOK_EXTERNALURL` to actually work (see [Telegram webhook](#telegram-webhook)) — everything else works fine without it.
+Two services need extra credentials to actually do anything (both start fine without them, they just won't work):
+- `telegram-service` needs a real `TELEGRAM_TOKEN` and a **public** `TELEGRAM_WEBHOOK_EXTERNALURL` (see [Telegram webhook](#telegram-webhook))
+- `youtube-service` needs a real `YOUTUBE_PROVIDER_APIKEY` (see [YouTube downloads](#youtube-downloads))
 
 | Service | Port | Purpose |
 |---|---|---|
