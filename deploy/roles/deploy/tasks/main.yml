@@ -13,6 +13,12 @@
     force: true
   register: git_result
 
+- name: Ensure postgres init directory exists
+  file:
+    path: "{{ deploy_path }}/postgres-init"
+    state: directory
+    mode: "0755"
+
 - name: Template postgres init script
   template:
     src: postgres-init-create-dbs.sql.j2
