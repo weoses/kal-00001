@@ -2,7 +2,12 @@
 
 A meme management system with multi-modal search. Upload images/videos via Telegram or a web app, extract text and captions with an LLM, generate semantic embeddings, and search your collection by text, fuzzy match, or meaning.
 
-## Quick start
+### Integrations
+
+Telegram - as inline bot [@memelobot](https://t.me/memelobot)  
+WebUI - create, search, manage. Non-public. Still ugly, i am not a designer at all.
+
+### Quick start
 
 ```bash
 cp .env.example .env
@@ -30,7 +35,7 @@ Two services need extra credentials to actually do anything (both start fine wit
 | `minio` | 9000 | S3-compatible media storage |
 | `postgres` | 5432 | Telegram bot user/session data |
 
-## Modules
+### Modules
 
 | Path | Description |
 |---|---|
@@ -43,7 +48,7 @@ Two services need extra credentials to actually do anything (both start fine wit
 | `gen` | Generated protobuf/Connect RPC code (do not edit) |
 | `proto` | Protocol buffer source definitions |
 
-## Gemini vs OpenRouter
+### Gemini vs OpenRouter
 
 `storage-service` picks its LLM backend per config — `extractor-provider` (captions/OCR) and `embedder-provider` (search vectors) can each independently be `gemini` or `openrouter`.
 
@@ -51,9 +56,11 @@ Two services need extra credentials to actually do anything (both start fine wit
 - **API keys**: env vars `GEMINI_API_KEY` / `OPENROUTER_API_KEY` (root `.env`) feed both the extractor and embedder for that provider. No Vertex AI project or Google ADC file is required — both providers authenticate with a plain API key.
 - Default is `openrouter` for local startup, since it needs nothing but a key.
 
-## YouTube downloads
+### YouTube downloads
 
 `youtube-service` doesn't use `yt-dlp` — it calls a third-party download API (default host `p.savenow.to`): submits a download job, polls until ready, then streams the result into MinIO.
+
+Unfortunately, yt-dlp is quite unusable without JS runtime, cookies and other desktop-style stuff. Calling third-party api is simplier than export cookies from my PC to VM every day.
 
 Config: `YOUTUBE_PROVIDER_APIKEY` (API key, root `.env`), `YOUTUBE_MAX_CONCURRENT_DOWNLOADS` (default 4). Video format/max duration are set in `youtube-service/config.yaml` (`youtube.VideoFormat`, `youtube.MaxDuration`).
 
@@ -61,15 +68,15 @@ Config: `YOUTUBE_PROVIDER_APIKEY` (API key, root `.env`), `YOUTUBE_MAX_CONCURREN
 
 `ffmpeg-service` wraps three operations: convert-to-MP4, extract-thumbnail-frame, and slice-video-with-overlap (slicing uses `ffprobe` to get duration, then stream-copies segments — no re-encode).
 
-Config (root `.env`): `FFMPEG_BINARY` / `FFMPEG_CPULIMIT` / `FFMPEG_THREADSLIMIT`. If `CPULIMIT` > 0, ffmpeg runs wrapped in the `cpulimit` binary (caps CPU %); `THREADSLIMIT` > 0 adds ffmpeg's `-threads N`. Both are optional — 0 means unlimited.
+Config (root `.env`): `FFMPEG_BINARY` / `FFMPEG_CPULIMIT` / `FFMPEG_THREADSLIMIT`. If `CPULIMIT` > 0, ffmpeg runs wrapped in the `cpulimit` binary (caps CPU % - vps provider often shutdown VM on CPU peak); `THREADSLIMIT` > 0 adds ffmpeg's `-threads N`. Both are optional — 0 means unlimited.
 
-## Telegram webhook
+### Telegram webhook
 
 `telegram-service` is webhook-only (no long-polling mode) — it registers `TELEGRAM_WEBHOOK_EXTERNALURL` with Telegram on startup and removes it on shutdown, so that URL must be a real, publicly reachable HTTPS endpoint pointing at the container's `/webhook` path. Without one, the bot never receives updates (this is also why the local compose stack can't fully run Telegram out of the box).
 
 This is unrelated to the OpenRouter/Gemini choice above — the bot just forwards uploads to `storage-service`, which does the actual LLM work regardless of which provider is configured there.
 
-## Local Go development (without Docker)
+### Local Go development (without Docker)
 
 Start just the infra:
 ```sh
