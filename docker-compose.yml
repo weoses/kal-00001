@@ -102,7 +102,7 @@ services:
     ports:
       - "127.0.0.1:7001:7001"
     volumes:
-      - "./storage-service/config.yaml:/app/config/config.yaml"
+      - "./services/storage-service/config.yaml:/app/config/config.yaml"
     networks:
       - env
     healthcheck:
@@ -139,7 +139,7 @@ services:
     ports:
       - "127.0.0.1:7002:7002"
     volumes:
-      - "./telegram-service/config.yaml:/app/config/config.yaml"
+      - "./services/telegram-service/config.yaml:/app/config/config.yaml"
     networks:
       - env
     depends_on:
@@ -164,7 +164,7 @@ services:
     ports:
       - "127.0.0.1:7006:7006"
     volumes:
-      - "./auth-service/config.yaml:/app/config/config.yaml"
+      - "./services/auth-service/config.yaml:/app/config/config.yaml"
     networks:
       - env
     healthcheck:
@@ -195,7 +195,7 @@ services:
     ports:
       - "127.0.0.1:7004:7004"
     volumes:
-      - "./youtube-service/config.yaml:/app/config/config.yaml"
+      - "./services/youtube-service/config.yaml:/app/config/config.yaml"
     networks:
       - env
     healthcheck:
@@ -228,7 +228,7 @@ services:
     ports:
       - "127.0.0.1:7005:7005"
     volumes:
-      - "./ffmpeg-service/config.yaml:/app/config/config.yaml"
+      - "./services/ffmpeg-service/config.yaml:/app/config/config.yaml"
     networks:
       - env
     healthcheck:
@@ -260,7 +260,7 @@ services:
     ports:
       - "127.0.0.1:7003:7003"
     volumes:
-      - "./webapp-service/config.yaml:/app/config/config.yaml"
+      - "./services/webapp-service/config.yaml:/app/config/config.yaml"
     networks:
       - env
     healthcheck:

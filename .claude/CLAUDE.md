@@ -2,17 +2,18 @@
 
 ## Project layout
 
-- `storage-service/` — main Go service (media storage, extraction, search)
-- `telegram-service/` — integration with telegram
+- `services/` — all Go modules (services, shared code, generated code)
+  - `services/storage-service/` — main Go service (media storage, extraction, search)
+  - `services/telegram-service/` — integration with telegram
+  - `services/gen/proto/v1/` — generated Go code, do not edit manually
+  - `services/common/` — shared utilities (helper, temp data, config)
 - `proto/v1/` — protobuf definitions; regenerate with `buf generate` from repo root
-- `gen/proto/v1/` — generated Go code, do not edit manually
-- `common/` — shared utilities (helper, temp data, config)
 
 ## Service architecture
 
-The service uses [Connect RPC](https://connectrpc.com/) (not raw gRPC). Handler interfaces are in `gen/proto/v1/v1connect/` and have plain signatures — no `connect.Request`/`connect.Response` wrappers on the handler side.
+The service uses [Connect RPC](https://connectrpc.com/) (not raw gRPC). Handler interfaces are in `services/gen/proto/v1/v1connect/` and have plain signatures — no `connect.Request`/`connect.Response` wrappers on the handler side.
 
-Dependency injection is done with `go.uber.org/fx`. New providers go in `storage-service/main.go`. Do not use one Provide call when create more than one object - try to use Result/Param Tags.
+Dependency injection is done with `go.uber.org/fx`. New providers go in `services/storage-service/main.go`. Do not use one Provide call when create more than one object - try to use Result/Param Tags.
 
 ## Layering rule
 
@@ -22,7 +23,7 @@ Dependency injection is done with `go.uber.org/fx`. New providers go in `storage
 
 ## Media extraction pipeline
 
-Pipeline steps live in `storage-service/service/EP*.go`, named by position (e.g. `EP00`, `EP10`, …). Steps are registered in `main.go` with `fx` group tag `pipeline_steps` and sorted by `GetPos()` inside `NewImageMetadataExtractService`.
+Pipeline steps live in `services/storage-service/service/EP*.go`, named by position (e.g. `EP00`, `EP10`, …). Steps are registered in `main.go` with `fx` group tag `pipeline_steps` and sorted by `GetPos()` inside `NewImageMetadataExtractService`.
 
 `MetadataExtractService.Extract` takes a `MetadataInputContext` which carries:
 - `ComputeHash / ComputeExtractor / ComputeEmbedding` — each step checks its own flag and skips if false and a seeded value already exists

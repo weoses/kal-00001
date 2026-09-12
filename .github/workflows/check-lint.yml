@@ -23,10 +23,10 @@ jobs:
 
       - uses: actions/setup-go@v6
         with:
-          go-version-file: ${{ matrix.module }}/go.mod
+          go-version-file: services/${{ matrix.module }}/go.mod
           cache-dependency-path: '**/go.sum'
 
       - uses: golangci/golangci-lint-action@v9
         with:
-          working-directory: ${{ matrix.module }}
+          working-directory: services/${{ matrix.module }}
           version: latest

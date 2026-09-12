@@ -87,7 +87,7 @@ docker compose up elasticsearch minio postgres -d
 
 Then run a service directly, e.g.:
 ```sh
-cd storage-service
+cd services/storage-service
 cp .env.example .env   # edit as needed
 go run .
 ```

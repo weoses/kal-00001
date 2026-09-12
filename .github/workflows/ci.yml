@@ -24,12 +24,12 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: ${{matrix.service}}-service/go.mod
+          go-version-file: services/${{matrix.service}}-service/go.mod
           cache-dependency-path: '**/go.sum'
       - name: Go tests
         uses: robherley/go-test-action@v0
         with:
-          moduleDirectory: ${{matrix.service}}-service
+          moduleDirectory: services/${{matrix.service}}-service
 
   build-services:
     runs-on: ubuntu-latest
