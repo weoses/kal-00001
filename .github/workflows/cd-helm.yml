@@ -1,0 +1,73 @@
+name: CD Helm
+
+on:
+  workflow_dispatch:
+    inputs:
+      TAG:
+        type: string
+        description: tag-to-deploy
+
+concurrency:
+  group: cd-helm
+  cancel-in-progress: false
+
+jobs:
+  setup-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - id: set-matrix
+        run: |
+          if [[ "${{ github.event.inputs.TAG }}" == *-dev ]]; then
+            echo 'matrix=["test"]' >> $GITHUB_OUTPUT
+          else
+            echo 'matrix=["test", "production"]' >> $GITHUB_OUTPUT
+          fi
+
+  deploy:
+    needs: setup-matrix
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target_env: ${{ fromJSON(needs.setup-matrix.outputs.matrix) }}
+      max-parallel: 1
+    environment: memelo-${{ matrix.target_env }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
+      - name: Install sops
+        run: |
+          curl -Lo /usr/local/bin/sops https://github.com/getsops/sops/releases/latest/download/sops-linux-amd64
+          chmod +x /usr/local/bin/sops
+
+      - name: Import SOPS PGP key
+        run: echo "${{ secrets.SOPS_PGP_PRIVATE_KEY }}" | gpg --batch --import
+
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p "$HOME/.kube"
+          echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > "$HOME/.kube/config"
+
+      - name: Deploy via Helm
+        run: |
+          helm upgrade --install memelo deploy/helm/memelo \
+            --namespace memelo-${{ matrix.target_env }} --create-namespace \
+            -f deploy/helm/memelo/values.yaml \
+            -f deploy/helm/memelo/values-${{ matrix.target_env }}.yaml \
+            -f <(sops -d deploy/helm/memelo/secrets/${{ matrix.target_env }}.enc.yaml) \
+            --set image.tag=${{ github.event.inputs.TAG }} \
+            --wait --timeout 5m
+
+      - name: Tests
+        uses: robherley/go-test-action@v0
+        with:
+          moduleDirectory: tests/e2e
+        env:
+          STORAGE_SERVICE_URI: ${{ secrets.TEST_STORAGE_SERVICE_URI }}
+          STORAGE_SERVICE_USERNAME: ${{ secrets.TEST_PROXY_USERNAME }}
+          STORAGE_SERVICE_PASSWORD: ${{ secrets.TEST_PROXY_PASSWORD }}
+        if: ${{ matrix.target_env == 'production' }}
