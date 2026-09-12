@@ -18,6 +18,9 @@ storage-service:
 youtube-service:
   Uri: "http://localhost:7004"
 
+auth-service:
+  Uri: "http://localhost:7006"
+
 user-account:
   StaticUuid: "00000000-0000-0000-0000-000000000000"
 
@@ -30,13 +33,3 @@ temp-storage:
   SecretKey:
   Bucket: melo-temp
   Secure: false
-
-permissions:
-  Create:
-    AllowedUserIds: []
-  Delete:
-    AllowedUserIds: []
-  Recompute:
-    AllowedUserIds: []
-  Search:
-    AllowedUserIds: []

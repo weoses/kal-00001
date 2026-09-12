@@ -1,0 +1,8 @@
+log:
+  Level: info
+
+server:
+  ListenAddress: :7006
+
+postgres:
+  Dsn:

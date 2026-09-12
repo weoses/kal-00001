@@ -55,6 +55,7 @@ services:
       - env
     volumes:
       - "postgres_data:/var/lib/postgresql/data"
+      - "./scripts/postgres-init:/docker-entrypoint-initdb.d"
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-memelo} -d ${POSTGRES_DB:-telegram}" ]
       interval: 10s
@@ -127,6 +128,7 @@ services:
       WEBHOOK_EXTERNALURL: ${TELEGRAM_WEBHOOK_EXTERNALURL}
       STORAGE_SERVICE_URI: http://storage-service:7001
       YOUTUBE_SERVICE_URI: http://youtube-service:7004
+      AUTH_SERVICE_URI: http://auth-service:7006
       POSTGRES_DSN: postgres://${POSTGRES_USER:-memelo}:${POSTGRES_PASSWORD:-memelo}@postgres:5432/${POSTGRES_DB:-telegram}?sslmode=disable
       TEMP_STORAGE_ENDPOINT: ${MINIO_ENDPOINT:-minio:9000}
       TEMP_STORAGE_ACCESSKEY: ${MINIO_ACCESS_KEY:-minio123}
@@ -148,6 +150,31 @@ services:
       storage-service:
         condition: service_healthy
       youtube-service:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+
+  auth-service:
+    build:
+      dockerfile: Dockerfile-auth-service
+    image: ghcr.io/weoses/auth-service:${RELEASE_VERSION:-latest}
+    environment:
+      POSTGRES_DSN: postgres://${POSTGRES_USER:-memelo}:${POSTGRES_PASSWORD:-memelo}@postgres:5432/auth?sslmode=disable
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:7006:7006"
+    volumes:
+      - "./auth-service/config.yaml:/app/config/config.yaml"
+    networks:
+      - env
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:7006/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 6
+      start_period: 20s
+    depends_on:
+      postgres:
         condition: service_healthy
 
   youtube-service:

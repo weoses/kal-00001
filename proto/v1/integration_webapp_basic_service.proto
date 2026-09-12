@@ -1,0 +1,18 @@
+syntax = "proto3";
+import "proto/v1/auth_common.proto";
+
+option go_package = "github.com/weoses/memelo/gen/proto/v1";
+package proto.memelo.v1;
+
+message WebappBasicAuthorizeRequest {
+  string username = 1;
+  string password = 2;
+}
+
+message WebappBasicAuthorizeResponse {
+  AuthResult result = 1;
+}
+
+service IntegrationWebappBasicService {
+  rpc Authorize(WebappBasicAuthorizeRequest) returns (WebappBasicAuthorizeResponse);
+}

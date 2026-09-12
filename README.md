@@ -31,9 +31,10 @@ Two services need extra credentials to actually do anything (both start fine wit
 | `webapp-service` | 7003 | Web UI (upload/search/browse) |
 | `youtube-service` | 7004 | YouTube link → video download |
 | `ffmpeg-service` | 7005 | Video conversion/thumbnail/slicing worker |
+| `auth-service` | 7006 | User/permission/integration-identity authorization |
 | `elasticsearch` | 9200 | Metadata + vector search |
 | `minio` | 9000 | S3-compatible media storage |
-| `postgres` | 5432 | Telegram bot user/session data |
+| `postgres` | 5432 | `auth-service` user/permission data (`auth` database) |
 
 ### Modules
 
@@ -44,6 +45,7 @@ Two services need extra credentials to actually do anything (both start fine wit
 | `webapp-service` | Web UI backend + frontend (Vite/React) |
 | `youtube-service` | Downloads YouTube videos for ingestion |
 | `ffmpeg-service` | Ffmpeg-backed video conversion worker |
+| `auth-service` | Users, permissions, and per-integration identities (Telegram, webapp login) |
 | `common` | Shared config, logging, and helper utilities |
 | `gen` | Generated protobuf/Connect RPC code (do not edit) |
 | `proto` | Protocol buffer source definitions |
