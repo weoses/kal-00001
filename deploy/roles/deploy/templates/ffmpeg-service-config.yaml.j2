@@ -1,0 +1,22 @@
+log:
+  Level: info
+
+server:
+  ListenAddress: :{{ ffmpeg_service_port }}
+
+temp-storage:
+  Endpoint: {{ s3_endpoint }}
+  AccessKey: {{ s3_access_key }}
+  SecretKey: {{ s3_secret_key }}
+  Bucket: {{ s3_temp_bucket }}
+  Secure: {{ s3_secure }}
+
+ffmpeg:
+  FfmpegBinary: ffmpeg
+  FfprobeBinary: ffprobe
+  CpuLimit: {{ ffmpeg_cpulimit }}
+  ThreadsLimit: {{ ffmpeg_threadslimit }}
+
+job:
+  MaxConcurrentJobs: 4
+  JobTtlSeconds: 3600

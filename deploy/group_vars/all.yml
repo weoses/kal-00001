@@ -1,0 +1,76 @@
+---
+# Deployment
+deploy_path: /home/github-runner/application
+
+# S3 / media storage (shared endpoint and access credentials)
+s3_endpoint: "storage.googleapis.com"
+s3_secure: "true"
+
+# Postgres
+telegram_postgres_db: telegram
+auth_postgres_db: auth
+
+# FFmpeg
+ffmpeg_cpulimit: 80
+ffmpeg_threadslimit:
+
+# LLM provider selection (gemini | openrouter)
+extractor_provider: "openrouter"
+embedder_provider: "gemini"
+
+# Extracting configuration
+extracting_separate_audio: true
+extracting_video_slice_interval: 15
+
+
+# Gemini embedding model
+gemini_embedding_model: "gemini-embedding-2-preview"
+gemini_embedding_api_endpoint: ""
+
+# Gemini extractor model
+gemini_extractor_model_image: "gemini-2.5-flash"
+gemini_extractor_model_video: "gemini-2.5-flash"
+gemini_extractor_model_audio: "gemini-2.5-flash"
+gemini_extractor_api_endpoint: ""
+
+# OpenRouter embedding model
+openrouter_embedding_model: ""
+
+# OpenRouter extractor model
+openrouter_extractor_model_image: "google/gemini-3-flash-preview"
+openrouter_extractor_model_video: "google/gemini-3-flash-preview"
+openrouter_extractor_model_audio: "google/gemini-3-flash-preview"
+
+
+# filled by runner
+release_version:
+commit_hash:
+repo_url:
+
+# Nginx
+nginx_log_dir: /var/log/nginx
+nginx_max_body_size: 100M
+nginx_proxy_read_timeout: 600
+nginx_htpasswd_file: /etc/nginx/.htpasswd
+nginx_htpasswd_realm: "Proxy"
+
+# Ports
+storage_service_port: 7001
+telegram_service_port: 7002
+webapp_service_port: 7003
+youtube_service_port: 7004
+ffmpeg_service_port: 7005
+auth_service_port: 7006
+
+webapp_base_url: "/.proxy/webapp-service"
+
+
+# Secrets
+s3_access_key:
+s3_secret_key:
+elastic_cloudid:
+elastic_apikey:
+gemini_api_key:
+openrouter_api_key:
+postgres_user:
+postgres_password:

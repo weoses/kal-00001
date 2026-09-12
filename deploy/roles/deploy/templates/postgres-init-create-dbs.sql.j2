@@ -1,0 +1,2 @@
+SELECT 'CREATE DATABASE {{ telegram_postgres_db }}' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '{{ telegram_postgres_db }}')\gexec
+SELECT 'CREATE DATABASE {{ auth_postgres_db }}' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '{{ auth_postgres_db }}')\gexec

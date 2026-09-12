@@ -93,3 +93,7 @@ go run .
 ```
 
 **Prerequisite for `storage-service`/`telegram-service`:** libvips must be installed (`vips-dev` / `vips` package).
+
+### Deployment
+
+`deploy/` holds the Ansible playbooks, role templates, and inventories used to deploy to the `test` and `production` environments. The CD pipeline (`.github/workflows/cd.yml`) runs `server_setup.yml` then `deploy.yml` against the target inventory via `workflow_dispatch`.

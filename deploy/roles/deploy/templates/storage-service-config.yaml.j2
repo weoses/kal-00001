@@ -1,0 +1,109 @@
+log:
+  Level: info
+
+server:
+  ListenAddress: :{{ storage_service_port }}
+
+extracting:
+  embedding-dimensions: 1408
+  video-slice-interval-sec: {{ extracting_video_slice_interval }}
+  separate-audio: {{ extracting_separate_audio }}
+
+search:
+  SemanticDuplicateThreshold: 0.955
+  PercentageDuplicatePartsThreshold: 0.7
+  SemanticTextSearchThreshold: 0.5
+  Fuzziness: "AUTO:4,8"
+
+
+media-storage:
+  Endpoint: {{ s3_endpoint }}
+  AccessKey: {{ s3_access_key }}
+  SecretKey: {{ s3_secret_key }}
+  Bucket: {{ s3_media_bucket }}
+  Secure: {{ s3_secure }}
+
+temp-storage:
+  Endpoint: {{ s3_endpoint }}
+  AccessKey: {{ s3_access_key }}
+  SecretKey: {{ s3_secret_key }}
+  Bucket: {{ s3_temp_bucket }}
+  Secure: {{ s3_secure }}
+
+
+metadata-db:
+  Elastic:
+    Addresses:
+    Username:
+    Password:
+    CloudID: {{ elastic_cloudid }}
+    ApiKey: {{ elastic_apikey }}
+  Index: {{ metadata_elastic_index }}
+
+tag-db:
+  Elastic:
+    Addresses:
+    Username:
+    Password:
+    CloudID: {{ elastic_cloudid }}
+    ApiKey: {{ elastic_apikey }}
+  Index: {{ tag_elastic_index }}
+
+image-converter:
+  ThumbSize: 360
+
+ffmpeg:
+  FfmpegBinary: ffmpeg
+  FfprobeBinary: ffprobe
+  CpuLimit: {{ ffmpeg_cpulimit }}
+  ThreadsLimit: {{ ffmpeg_threadslimit }}
+
+ffmpeg-service:
+  Uri: "http://ffmpeg-service:{{ ffmpeg_service_port }}"
+  PollIntervalMs: 500
+  PollMaxWaitSec: 300
+
+extractor-provider: {{ extractor_provider }}
+embedder-provider: {{ embedder_provider }}
+
+gemini-extractor:
+  apikey: {{ gemini_api_key }}
+  apiendpoint: {{ gemini_extractor_api_endpoint }}
+  model-image: {{ gemini_extractor_model_image }}
+  model-video: {{ gemini_extractor_model_video }}
+  model-audio: {{ gemini_extractor_model_audio }}
+  image-extract-prompt: "Analyze this media and call the extract_metadata function with your findings. If you found nothing for parameter, leave parameter empty (except caption). Always preserve original language, and use correct alphabet (cyrillic, latin)"
+  video-extract-prompt: "Analyze this media and call the extract_metadata function with your findings. If you found nothing for parameter, leave parameter empty (except caption). Always preserve original language, and use correct alphabet (cyrillic, latin)"
+  audio-extract-prompt: "Analyze this media and call the extract_metadata function with your findings. If you found nothing for parameter, leave parameter empty (except caption). Always preserve original language, and use correct alphabet (cyrillic, latin)"
+  output-tool-description: "Extract structured metadata from the media"
+  output-tool-transcription-desc: "Audio transcription or speech-to-text content from the media. Preserve original language. Capture speech and music lyrics."
+  output-tool-on-screen-text-desc: "Any text visible on screen (OCR). Preserve original language"
+  output-tool-caption-desc: "A small caption summarizing the media content. Must not be more than 2-3 words"
+  output-tool-audio-track-desc: "An audio track, song, that is at sound background. If it is not famous, or it to quiet, or you not sure, ignore it"
+  combine-prompt: "Multiple extractions of video segments are provided below. Segments may overlap one another. Merge on-screen text and transcripts. Pick the most fitting caption. Synthesize them into a single portion of data and call extract_metadata."
+  duplicate-prompt: "Are these two images is same, has same idea, same meaning, same characters, etc? Pass true to tool check_duplicate if images is same, or false otherwise."
+
+gemini-embedding:
+  apikey: {{ gemini_api_key }}
+  apiendpoint: {{ gemini_embedding_api_endpoint }}
+  model: {{ gemini_embedding_model }}
+
+openrouter-extractor:
+  apikey: {{ openrouter_api_key  }}
+  model-image: {{ openrouter_extractor_model_image }}
+  model-video: {{ openrouter_extractor_model_video }}
+  model-audio: {{ openrouter_extractor_model_audio }}
+  image-extract-prompt: "You are combined media/audio to text extractor. Analyze this media and call the extract_metadata function with your findings. If you found nothing for parameter, leave parameter empty (except caption). Always preserve original language, and use correct alphabet (cyrillic, latin). Always return only text/words/lyrics that actually was in media - do not try to write full fragment, return only data that is actually inside media"
+  video-extract-prompt: "You are combined media/audio to text extractor. Analyze this media and call the extract_metadata function with your findings. If you found nothing for parameter, leave parameter empty (except caption). Always preserve original language, and use correct alphabet (cyrillic, latin). Always return only text/words/lyrics that actually was in media - do not try to write full fragment, return only data that is actually inside media"
+  audio-extract-prompt: "You are audio to text extractor. Analyze this audio and call the extract_metadata function with your findings. If you found nothing for parameter, leave parameter empty (except caption). Always preserve original language, and use correct alphabet (cyrillic, latin). Always return only text/words/lyrics that actually was in media - do not try to write full fragment, return only data that is actually inside media. If something is too quiet, ignore it."
+  output-tool-description: "Extract structured metadata from the media"
+  output-tool-transcription-desc: "Audio transcription or speech-to-text content from the media. Preserve original language. Capture speech and music lyrics."
+  output-tool-on-screen-text-desc: "Any text visible on screen (OCR). Preserve original language"
+  output-tool-caption-desc: "A small caption summarizing the media content. Must not be more than 2-3 words"
+  output-tool-audio-track-desc: "An audio track, song, that is at sound background. If it is not famous, or it to quiet, or you not sure, ignore it"
+  combine-prompt: "Multiple extractions of video segments are provided below. Segments may overlap one another. Merge on-screen text and transcripts. Pick the most fitting caption. Synthesize them into a single portion of data and call extract_metadata."
+  duplicate-prompt: "Are these two images is same, has same idea, same meaning, same characters, etc? Pass true to tool check_duplicate if images is same, or false otherwise."
+
+openrouter-embedding:
+  apikey: {{ openrouter_api_key | default('') }}
+  model: {{ openrouter_embedding_model }}

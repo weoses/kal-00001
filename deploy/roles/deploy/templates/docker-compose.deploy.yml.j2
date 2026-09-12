@@ -1,0 +1,121 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: {{ postgres_user }}
+      POSTGRES_PASSWORD: {{ postgres_password }}
+      POSTGRES_DB: {{ telegram_postgres_db }}
+    networks:
+      - env
+    volumes:
+      - "postgres_data:/var/lib/postgresql/data"
+      - "./postgres-init:/docker-entrypoint-initdb.d"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U {{ postgres_user }} -d {{ telegram_postgres_db }}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  auth-service:
+    image: "ghcr.io/weoses/auth-service:{{ release_version | default('latest') }}"
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:{{ auth_service_port }}:{{ auth_service_port }}"
+    volumes:
+      - "./auth-service-config.yaml:/app/config.yaml"
+    networks:
+      - env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:{{ auth_service_port }}/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 6
+      start_period: 20s
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  ffmpeg-service:
+    image: "ghcr.io/weoses/ffmpeg-service:{{ release_version | default('latest') }}"
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:{{ ffmpeg_service_port }}:{{ ffmpeg_service_port }}"
+    volumes:
+      - "./ffmpeg-service-config.yaml:/app/config.yaml"
+    networks:
+      - env
+
+  storage-service:
+    image: "ghcr.io/weoses/storage-service:{{ release_version | default('latest') }}"
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:{{ storage_service_port }}:{{ storage_service_port }}"
+    volumes:
+      - "./storage-service-config.yaml:/app/config.yaml"
+    networks:
+      - env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:{{ storage_service_port }}/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 6
+      start_period: 20s
+    depends_on:
+      ffmpeg-service:
+        condition: service_started
+
+  telegram-service:
+    image: "ghcr.io/weoses/telegram-service:{{ release_version | default('latest') }}"
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:{{ telegram_service_port }}:{{ telegram_service_port }}"
+    volumes:
+      - "./telegram-service-config.yaml:/app/config.yaml"
+    networks:
+      - env
+    depends_on:
+      storage-service:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  youtube-service:
+    image: "ghcr.io/weoses/youtube-service:{{ release_version | default('latest') }}"
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:{{ youtube_service_port }}:{{ youtube_service_port }}"
+    volumes:
+      - "./youtube-service-config.yaml:/app/config.yaml"
+    networks:
+      - env
+    depends_on:
+      storage-service:
+        condition: service_healthy
+
+  webapp:
+    image: "ghcr.io/weoses/webapp-service:{{ release_version | default('latest') }}"
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:{{ webapp_service_port }}:{{ webapp_service_port }}"
+    volumes:
+      - "./webapp-service-config.yaml:/app/config.yaml"
+    networks:
+      - env
+    depends_on:
+      storage-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:{{ webapp_service_port }}/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 6
+      start_period: 20s
+
+networks:
+  env:
+
+volumes:
+  postgres_data:
