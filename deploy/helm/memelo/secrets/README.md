@@ -50,3 +50,16 @@ helm upgrade --install memelo deploy/helm/memelo \
 ```
 
 Swap `test` for `production` (and the namespace) for the other environment.
+
+## CD (GitHub Actions)
+
+`.github/workflows/cd-helm.yml` runs the same `helm upgrade` shown above via
+`workflow_dispatch`, gated per environment by the `memelo-test` /
+`memelo-production` GitHub Environments. It needs these secrets set on each
+environment:
+
+- `KUBE_CONFIG` — base64-encoded kubeconfig for the Vultr cluster
+  (`cat kubeconfig.yaml | base64 -w0`).
+- `SOPS_PGP_PRIVATE_KEY` — the PGP private key matching the fingerprint in
+  `.sops.yaml` (`gpg --export-secret-keys --armor <fingerprint>`), used to
+  decrypt `secrets/<env>.enc.yaml` at deploy time.
