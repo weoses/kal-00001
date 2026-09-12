@@ -5,10 +5,10 @@ RUN apk add --update --no-cache bash curl \
     gcc g++ vips vips-dev vips-poppler pkgconf \
     poppler-dev musl-dev libc6-compat 
 
-COPY ./gen gen/
-COPY ./common common/
+COPY ./services/gen gen/
+COPY ./services/common common/
 
-COPY ./telegram-service ./telegram-service
+COPY ./services/telegram-service ./telegram-service
 
 WORKDIR /app/telegram-service
 RUN go build -a -installsuffix cgo -o output.bin

@@ -3,9 +3,9 @@ FROM golang:1.26-alpine AS builder
 WORKDIR /app
 RUN apk add --update --no-cache bash curl gcc g++ pkgconf musl-dev
 
-COPY ./gen gen/
-COPY ./common common/
-COPY ./ffmpeg-service ./ffmpeg-service
+COPY ./services/gen gen/
+COPY ./services/common common/
+COPY ./services/ffmpeg-service ./ffmpeg-service
 
 WORKDIR /app/ffmpeg-service
 RUN go build -a -installsuffix cgo -o output.bin

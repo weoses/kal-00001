@@ -5,9 +5,9 @@ RUN apk add --update --no-cache bash curl \
     gcc g++ vips vips-dev vips-poppler pkgconf \
     poppler-dev musl-dev libc6-compat
 
-COPY ./gen gen/
-COPY ./common common/
-COPY ./storage-service ./storage-service
+COPY ./services/gen gen/
+COPY ./services/common common/
+COPY ./services/storage-service ./storage-service
 
 WORKDIR /app/storage-service
 RUN go build -a -installsuffix cgo -o output.bin

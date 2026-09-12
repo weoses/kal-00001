@@ -27,4 +27,4 @@ require (
 	google.golang.org/protobuf v1.36.11 // indirect
 )
 
-replace github.com/weoses/memelo/gen => ../../gen
+replace github.com/weoses/memelo/gen => ../../services/gen

@@ -3,10 +3,10 @@ FROM golang:1.25.0-alpine AS builder
 WORKDIR /app
 RUN apk add --update --no-cache bash curl gcc g++ musl-dev
 
-COPY ./gen gen/
-COPY ./common common/
+COPY ./services/gen gen/
+COPY ./services/common common/
 
-COPY ./auth-service ./auth-service
+COPY ./services/auth-service ./auth-service
 
 WORKDIR /app/auth-service
 RUN go build -a -installsuffix cgo -o output.bin
