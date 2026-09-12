@@ -69,17 +69,6 @@ Config (root `.env`): `FFMPEG_BINARY` / `FFMPEG_CPULIMIT` / `FFMPEG_THREADSLIMIT
 
 This is unrelated to the OpenRouter/Gemini choice above — the bot just forwards uploads to `storage-service`, which does the actual LLM work regardless of which provider is configured there.
 
-## Tech stack
-
-- **Language**: Go
-- **API**: Connect RPC (gRPC over HTTP/2)
-- **Search**: Elasticsearch
-- **Object storage**: MinIO (S3-compatible)
-- **Telegram bot data**: Postgres
-- **Image processing**: bimg (libvips wrapper) — requires libvips installed for local (non-Docker) builds
-- **LLM**: Gemini or OpenRouter (pluggable)
-- **DI**: Uber fx
-
 ## Local Go development (without Docker)
 
 Start just the infra:
