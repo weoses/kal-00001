@@ -98,7 +98,7 @@ func (s *TelegramBotServiceImpl) handleCommand(ctx context.Context, requestMessa
 		}
 		var sb strings.Builder
 		sb.WriteString(msgStartIntro)
-		for _, line := range s.inline.HelpLines(userId) {
+		for _, line := range s.inline.HelpLines(ctx, userId) {
 			sb.WriteString("\n• @")
 			sb.WriteString(s.bot.Self.UserName)
 			sb.WriteString(" ")

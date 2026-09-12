@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+option go_package = "github.com/weoses/memelo/gen/proto/v1";
+package proto.memelo.v1;
+
+enum AuthStatus {
+  AUTH_STATUS_UNSPECIFIED = 0;
+  AUTH_STATUS_OK = 1;
+  AUTH_STATUS_NOT_FOUND = 2;
+}
+
+message AuthResult {
+  AuthStatus status = 1;
+  string user_id = 2;
+  string account_id = 3;
+  repeated string permissions = 4;
+}

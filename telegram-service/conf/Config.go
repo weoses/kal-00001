@@ -24,23 +24,16 @@ type YoutubeServiceConfig struct {
 	Uri string
 }
 
+type AuthServiceConfig struct {
+	Uri string
+}
+
 type UserAccountConfig struct {
 	StaticUuid string
 }
 
 type WebhookConfig struct {
 	ExternalUrl string
-}
-
-type PermissionEntryConfig struct {
-	AllowedUserIds []int64 `mapstructure:"AllowedUserIds"`
-}
-
-type PermissionsConfig struct {
-	Create    *PermissionEntryConfig `mapstructure:"Create"`
-	Delete    *PermissionEntryConfig `mapstructure:"Delete"`
-	Recompute *PermissionEntryConfig `mapstructure:"Recompute"`
-	Search    *PermissionEntryConfig `mapstructure:"Search"`
 }
 
 type Config struct {
@@ -51,9 +44,9 @@ type Config struct {
 	Inline         *InlineConfig                    `mapstructure:"inline"`
 	StorageService *StorageServiceConfig            `mapstructure:"storage-service"`
 	YoutubeService *YoutubeServiceConfig            `mapstructure:"youtube-service"`
+	AuthService    *AuthServiceConfig               `mapstructure:"auth-service"`
 	UserAccount    *UserAccountConfig               `mapstructure:"user-account"`
 	TempStorage    *commonconfig.MediaStorageConfig `mapstructure:"temp-storage"`
-	Permissions    *PermissionsConfig               `mapstructure:"permissions"`
 }
 
 func NewConfig() (*Config, error) {

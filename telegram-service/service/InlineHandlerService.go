@@ -28,7 +28,7 @@ type InlineHandlerService interface {
 		request *tgbotapi.ChosenInlineResult,
 	) error
 
-	HelpLines(userId int64) []string
+	HelpLines(ctx context.Context, userId int64) []string
 }
 
 type InineHandlerServiceImpl struct {
@@ -67,10 +67,10 @@ func (i *InineHandlerServiceImpl) ProcessChosenInlineQuery(ctx context.Context, 
 	return err
 }
 
-func (i *InineHandlerServiceImpl) HelpLines(userId int64) []string {
+func (i *InineHandlerServiceImpl) HelpLines(ctx context.Context, userId int64) []string {
 	var lines []string
 	for _, entry := range i.factory.Entries() {
-		if i.permissionService.IsAllowed(userId, entry.Permission) {
+		if i.permissionService.IsAllowed(ctx, userId, entry.Permission) {
 			lines = append(lines, entry.Processor.HelpText())
 		}
 	}

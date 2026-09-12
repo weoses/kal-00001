@@ -1,0 +1,24 @@
+FROM golang:1.25.0-alpine AS builder
+
+WORKDIR /app
+RUN apk add --update --no-cache bash curl gcc g++ musl-dev
+
+COPY ./gen gen/
+COPY ./common common/
+
+COPY ./auth-service ./auth-service
+
+WORKDIR /app/auth-service
+RUN go build -a -installsuffix cgo -o output.bin
+
+FROM alpine:latest
+
+WORKDIR /app
+RUN apk add curl
+COPY --from=builder /app/auth-service/output.bin auth-service
+
+WORKDIR /app/config
+ENV APPLICATION_CONFIGPATH "/app/config"
+
+WORKDIR /app
+ENTRYPOINT [ "/app/auth-service" ]

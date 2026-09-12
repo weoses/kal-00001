@@ -3,8 +3,7 @@ package service
 import (
 	"context"
 	"errors"
-
-	"github.com/weoses/memelo/telegram-service/conf"
+	"log/slog"
 )
 
 const (
@@ -14,22 +13,32 @@ const (
 	PermissionSearch    = "search"
 )
 
+// permissionCodes maps a telegram-service action to the permission code
+// auth-service grants a user. PermissionSearch has no entry: search stays
+// open to any resolved (non-blocked) user, matching the read-only nature of
+// browsing the (possibly public) dataset.
+var permissionCodes = map[string]string{
+	PermissionCreate:    "CREATE",
+	PermissionDelete:    "DELETE",
+	PermissionRecompute: "UPDATE",
+}
+
 var ErrForbidden = errors.New("forbidden")
 
 type PermissionService interface {
-	IsAllowed(userId int64, permission string) bool
+	IsAllowed(ctx context.Context, userId int64, permission string) bool
 }
 
 // InvokeWithPermission checks the named permission for userId before calling fn.
 // Returns ErrForbidden if the user is not allowed.
 func InvokeWithPermission[T any](
-	_ context.Context,
+	ctx context.Context,
 	svc PermissionService,
 	userId int64,
 	permission string,
 	fn func() (T, error),
 ) (T, error) {
-	if !svc.IsAllowed(userId, permission) {
+	if !svc.IsAllowed(ctx, userId, permission) {
 		var zero T
 		return zero, ErrForbidden
 	}
@@ -37,44 +46,25 @@ func InvokeWithPermission[T any](
 }
 
 type PermissionServiceImpl struct {
-	permissions map[string]map[int64]struct{}
+	auth AuthConnector
+	log  *slog.Logger
 }
 
-func (p *PermissionServiceImpl) IsAllowed(userId int64, permission string) bool {
-	allowed, ok := p.permissions[permission]
-	if !ok || len(allowed) == 0 {
+func NewPermissionService(auth AuthConnector) PermissionService {
+	return &PermissionServiceImpl{auth: auth, log: slog.With("service", "PermissionService")}
+}
+
+func (p *PermissionServiceImpl) IsAllowed(ctx context.Context, userId int64, permission string) bool {
+	code, needsPermission := permissionCodes[permission]
+	if !needsPermission {
 		return true
 	}
-	_, ok = allowed[userId]
-	return ok
-}
 
-func NewPermissionService(cfg *conf.Config) PermissionService {
-	perms := make(map[string]map[int64]struct{})
-
-	type entry struct {
-		name string
-		cfg  *conf.PermissionEntryConfig
+	result, err := p.auth.AuthorizeTelegram(ctx, userId)
+	if err != nil {
+		p.log.ErrorContext(ctx, "authorize failed, denying by default", "userId", userId, "permission", permission, "error", err)
+		return false
 	}
 
-	if cfg.Permissions != nil {
-		entries := []entry{
-			{PermissionCreate, cfg.Permissions.Create},
-			{PermissionDelete, cfg.Permissions.Delete},
-			{PermissionRecompute, cfg.Permissions.Recompute},
-			{PermissionSearch, cfg.Permissions.Search},
-		}
-		for _, e := range entries {
-			if e.cfg == nil {
-				continue
-			}
-			set := make(map[int64]struct{}, len(e.cfg.AllowedUserIds))
-			for _, id := range e.cfg.AllowedUserIds {
-				set[id] = struct{}{}
-			}
-			perms[e.name] = set
-		}
-	}
-
-	return &PermissionServiceImpl{permissions: perms}
+	return result.HasPermission(code)
 }

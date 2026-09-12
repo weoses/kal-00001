@@ -1,0 +1,17 @@
+syntax = "proto3";
+import "proto/v1/auth_common.proto";
+
+option go_package = "github.com/weoses/memelo/gen/proto/v1";
+package proto.memelo.v1;
+
+message GetUserRequest {
+  string user_id = 1;
+}
+
+message GetUserResponse {
+  AuthResult result = 1;
+}
+
+service AuthService {
+  rpc GetUser(GetUserRequest) returns (GetUserResponse);
+}
