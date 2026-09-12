@@ -1,109 +1,95 @@
 # memelo
 
-A cloud-native meme management system with multi-modal search. Upload images via Telegram, extract text with OCR, generate semantic embeddings, and search your collection by text, fuzzy match, or meaning.
+A meme management system with multi-modal search. Upload images/videos via Telegram or a web app, extract text and captions with an LLM, generate semantic embeddings, and search your collection by text, fuzzy match, or meaning.
 
-## How to start
+## Quick start
 
-In repo root folder:
 ```bash
 cp .env.example .env
 
-# edit .env - must have valid GOOGLE_CREDS_PATH and IMAGE_EMBEDDING_PROJECTNAME
+# edit .env — at minimum set OPENROUTER_API_KEY
+# (get one at https://openrouter.ai/settings/keys)
 
-docker compose up -d
+docker compose up -d --build
 ```
 
-## How to obtain google creds?
-Google docs: https://docs.cloud.google.com/docs/authentication/application-default-credentials  
-App need a json file from google cloud console, if you logged in gloud cli - it located at `$HOME/.config/gcloud/application_default_credentials.json`  
+This starts everything locally: Elasticsearch, MinIO, Postgres, and all services below. No Google Cloud account needed by default.
 
-So, minimal instruction:
-- Register at google cloud
-- Enable two apis - `Cloud Vision API` and `Vertex AI API`. (I don't remember where is enable buttons exactly)
-- Either:
-- - Create service account 
-- - Download key for it
-- Or: 
-- - Install gcloud cli tools
-- - Login to your google account. It will create key automatically on your PC in default location.
+`telegram-service` needs a real `TELEGRAM_TOKEN` and a **public** `TELEGRAM_WEBHOOK_EXTERNALURL` to actually work (see [Telegram webhook](#telegram-webhook)) — everything else works fine without it.
 
-Anyway, check documentation about ADC, there is a lot of ways to pass credentials to application
+| Service | Port | Purpose |
+|---|---|---|
+| `storage-service` | 7001 | Core service — media processing, extraction, search |
+| `telegram-service` | 7002 | Telegram bot frontend |
+| `webapp-service` | 7003 | Web UI (upload/search/browse) |
+| `youtube-service` | 7004 | YouTube link → video download |
+| `ffmpeg-service` | 7005 | Video conversion/thumbnail/slicing worker |
+| `elasticsearch` | 9200 | Metadata + vector search |
+| `minio` | 9000 | S3-compatible media storage |
+| `postgres` | 5432 | Telegram bot user/session data |
 
-## Architecture
+## Modules
 
-```
-Integration services  ──(gRPC)─►  storage-service
-                                       │
-                             ┌─────────┼─────────┐
-                             ▼         ▼         ▼
-                        MinIO S3  Elasticsearch  Google Cloud
-                       (images)   (metadata +    (Vision OCR +
-                                  vectors)       Vertex AI embeddings)
-```
-
-**Modules:**
-
-| Module | Description |
+| Path | Description |
 |---|---|
-| `storage-service` | Core service — image processing, OCR, embeddings, search, export |
-| `telegram-service` | Telegram bot frontend — upload, search, delete via chat/inline |
+| `storage-service` | Core service — media processing, OCR/captioning, embeddings, search, export |
+| `telegram-service` | Telegram bot frontend |
+| `webapp-service` | Web UI backend + frontend (Vite/React) |
+| `youtube-service` | Downloads YouTube videos for ingestion |
+| `ffmpeg-service` | Ffmpeg-backed video conversion worker |
 | `common` | Shared config, logging, and helper utilities |
 | `gen` | Generated protobuf/Connect RPC code (do not edit) |
 | `proto` | Protocol buffer source definitions |
 
-## Features
+## Gemini vs OpenRouter
 
-- **Image processing** — converts uploads to JPEG, generates thumbnails (libvips)
-- **OCR** — extracts text from images via Google Cloud Vision API
-- **Semantic embeddings** — 1408-dimensional vectors via Google Vertex AI (`multimodalembedding@001`)
-- **Deduplication** — hash-based and embedding similarity checks on upload to avoid image duplicates
-- **Multi-modal search pipeline** — ordered searchers, first match wins:
+`storage-service` picks its LLM backend per config — `extractor-provider` (captions/OCR) and `embedder-provider` (search vectors) can each independently be `gemini` or `openrouter`.
 
-  | Order | Searcher | Strategy                        |
-  |---|---|---------------------------------|
-  | 0 | SimpleSearcher | Full-text on OCR result         |
-  | 10 | IdSearcher | Direct UUID lookup by image id  |
-  | 20 | FuzzySearcher | Fuzzy text match                |
-  | 30 | TextEmbeddingSearcher | Semantic vector search          |
-  | 40 | AllSearcher | List all (empty query fallback) |
+- **Video embeddings**: Gemini embeds the whole video natively in one call. OpenRouter has no video embedding API — it grabs a single frame (via `ffmpeg-service`) and embeds that image instead. Gemini gives better video search quality; OpenRouter is simpler to set up.
+- **API keys**: env vars `GEMINI_API_KEY` / `OPENROUTER_API_KEY` (root `.env`) feed both the extractor and embedder for that provider. No Vertex AI project or Google ADC file is required — both providers authenticate with a plain API key.
+- Default is `openrouter` for local startup, since it needs nothing but a key.
 
+## YouTube downloads
 
-## Tech Stack
+`youtube-service` doesn't use `yt-dlp` — it calls a third-party download API (default host `p.savenow.to`): submits a download job, polls until ready, then streams the result into MinIO.
 
-- **Language**: Go 1.24
+Config: `YOUTUBE_PROVIDER_APIKEY` (API key, root `.env`), `YOUTUBE_MAX_CONCURRENT_DOWNLOADS` (default 4). Video format/max duration are set in `youtube-service/config.yaml` (`youtube.VideoFormat`, `youtube.MaxDuration`).
+
+## FFmpeg conversion
+
+`ffmpeg-service` wraps three operations: convert-to-MP4, extract-thumbnail-frame, and slice-video-with-overlap (slicing uses `ffprobe` to get duration, then stream-copies segments — no re-encode).
+
+Config (root `.env`): `FFMPEG_BINARY` / `FFMPEG_CPULIMIT` / `FFMPEG_THREADSLIMIT`. If `CPULIMIT` > 0, ffmpeg runs wrapped in the `cpulimit` binary (caps CPU %); `THREADSLIMIT` > 0 adds ffmpeg's `-threads N`. Both are optional — 0 means unlimited.
+
+## Telegram webhook
+
+`telegram-service` is webhook-only (no long-polling mode) — it registers `TELEGRAM_WEBHOOK_EXTERNALURL` with Telegram on startup and removes it on shutdown, so that URL must be a real, publicly reachable HTTPS endpoint pointing at the container's `/webhook` path. Without one, the bot never receives updates (this is also why the local compose stack can't fully run Telegram out of the box).
+
+This is unrelated to the OpenRouter/Gemini choice above — the bot just forwards uploads to `storage-service`, which does the actual LLM work regardless of which provider is configured there.
+
+## Tech stack
+
+- **Language**: Go
 - **API**: Connect RPC (gRPC over HTTP/2)
-- **Search**: Elasticsearch 8.16
+- **Search**: Elasticsearch
 - **Object storage**: MinIO (S3-compatible)
-- **User data**: MongoDB
-- **Image processing**: bimg (libvips wrapper) *Require libvips to be installed*
-- **OCR**: Google Cloud Vision API
-- **Embeddings**: Google Vertex AI
+- **Telegram bot data**: Postgres
+- **Image processing**: bimg (libvips wrapper) — requires libvips installed for local (non-Docker) builds
+- **LLM**: Gemini or OpenRouter (pluggable)
 - **DI**: Uber fx
 
-## Local Development
+## Local Go development (without Docker)
 
-**Start dependencies:**
+Start just the infra:
 ```sh
- docker compose up elasticsearch service -d
+docker compose up elasticsearch minio postgres -d
 ```
 
-This starts Elasticsearch (`:9200`),  MinIO (`:9000`).
-
-**Build and run storage-service:**
+Then run a service directly, e.g.:
 ```sh
 cd storage-service
-cp .env.example .env
-
-# edit .env here
-# app must have valid IMAGE_EMBEDDING_PROJECTNAME (google console project id like word-word-111111-a1)
-
+cp .env.example .env   # edit as needed
 go run .
 ```
 
-**Prerequisites for storage-service:** libvips must be installed (`vips-dev` / `vips`).
-
-**Docker:**
-```sh
-docker build -f Dockerfile-storage-service -t memelo-storage .
-docker build -f Dockerfile-telegram-service -t memelo-telegram .
-```
+**Prerequisite for `storage-service`/`telegram-service`:** libvips must be installed (`vips-dev` / `vips` package).
