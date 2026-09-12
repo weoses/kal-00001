@@ -1,0 +1,18 @@
+# Applied once cert-manager is installed (kubectl apply -f cluster-issuer.yaml).
+# Issues certs for any Ingress annotated with
+# cert-manager.io/cluster-issuer: letsencrypt-prod, via HTTP-01 challenges
+# served through ingress-nginx.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: "elawy3243@gmail.com"
+    privateKeySecretRef:
+      name: letsencrypt-prod-account-key
+    solvers:
+      - http01:
+          ingress:
+            ingressClassName: nginx

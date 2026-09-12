@@ -1,0 +1,13 @@
+# Values for the ingress-nginx-controller chart (ingress-nginx/ingress-nginx).
+#
+# Despite no cloud-controller-manager pod being visible in kube-system,
+# Vultr's VKE clusters *do* provision Service type=LoadBalancer (the CCM
+# runs on Vultr's managed side, not as a visible in-cluster pod) — confirmed
+# by test-deploying a LoadBalancer Service, which got a real external IP
+# within ~2 minutes. There is no annotation to pin that LB to a pre-existing
+# reserved IP, so DNS must be pointed at whatever IP this Service is
+# assigned after install (see cluster/README.md).
+controller:
+  service:
+    enabled: true
+    type: LoadBalancer

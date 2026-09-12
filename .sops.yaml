@@ -1,0 +1,3 @@
+creation_rules:
+  - path_regex: deploy/helm/memelo/secrets/.*\.enc\.yaml$
+    pgp: 2BD717640A3B48F2117627E1D775ADBB3CC16C12

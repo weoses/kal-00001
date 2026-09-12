@@ -1,0 +1,11 @@
+s3:
+  mediaBucket: melo-prod-media
+  tempBucket: melo-prod-temp
+
+elastic:
+  metadataIndex: melo-prod-media-metadata
+  tagIndex: melo-prod-tag-metadata
+
+ingress:
+  webappDomain: ""   # e.g. app.example.com
+  webhookDomain: ""  # e.g. hooks.example.com

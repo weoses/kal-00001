@@ -1,0 +1,57 @@
+{{- if and .Values.ingress.enabled .Values.ingress.webappDomain }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: memelo-webapp
+  labels:
+    {{- include "memelo.labels" . | nindent 4 }}
+  annotations:
+    cert-manager.io/cluster-issuer: {{ .Values.ingress.clusterIssuer }}
+    nginx.ingress.kubernetes.io/proxy-body-size: {{ .Values.ingress.maxBodySize | quote }}
+    nginx.ingress.kubernetes.io/proxy-read-timeout: {{ .Values.ingress.proxyReadTimeoutSeconds | quote }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.webappDomain }}
+      secretName: memelo-webapp-tls
+  rules:
+    - host: {{ .Values.ingress.webappDomain }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: webapp-service
+                port:
+                  number: {{ (index .Values.services "webapp-service").port }}
+{{- end }}
+---
+{{- if and .Values.ingress.enabled .Values.ingress.webhookDomain }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: memelo-webhook
+  labels:
+    {{- include "memelo.labels" . | nindent 4 }}
+  annotations:
+    cert-manager.io/cluster-issuer: {{ .Values.ingress.clusterIssuer }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.webhookDomain }}
+      secretName: memelo-webhook-tls
+  rules:
+    - host: {{ .Values.ingress.webhookDomain }}
+      http:
+        paths:
+          - path: /webhook
+            pathType: Exact
+            backend:
+              service:
+                name: telegram-service
+                port:
+                  number: {{ (index .Values.services "telegram-service").port }}
+{{- end }}
